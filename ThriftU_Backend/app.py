@@ -707,7 +707,198 @@ def get_post_replies(post_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Delete post API
+@app.route('/post/delete', methods=['POST'])
+def delete_post():
+    user_id = request.user_id
 
+    # Get post_id from the request body
+    data = request.get_json()
+    post_id = data.get('post_id')
+
+    if not post_id:
+        return jsonify({'error': 'Post ID is required'}), 400
+
+    try:
+        # Create a database connection
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+
+        # Check if the post exists and belongs to the current user
+        cursor.execute("SELECT user_id FROM \"Post\" WHERE post_id = %s", (post_id,))
+        post = cursor.fetchone()
+
+        if not post:
+            return jsonify({'error': 'Post not found'}), 404
+
+        if post[0] != user_id:
+            return jsonify({'error': 'You are not allowed to delete this post'}), 403
+
+        # Delete all comments related to this post
+        cursor.execute("DELETE FROM \"Reply\" WHERE to_post_id = %s", (post_id,))
+
+        # Delete all file associations related to this post
+        cursor.execute("DELETE FROM \"Post_file\" WHERE post_id = %s", (post_id,))
+
+        # Delete the post itself
+        cursor.execute("DELETE FROM \"Post\" WHERE post_id = %s", (post_id,))
+
+        # Commit the changes and close the connection
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Post and associated data deleted successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Delete reply API
+@app.route('/reply/delete', methods=['POST'])
+def delete_reply():
+    user_id = request.user_id
+
+    # Get reply_id from the request body
+    data = request.get_json()
+    reply_id = data.get('reply_id')
+
+    if not reply_id:
+        return jsonify({'error': 'Reply ID is required'}), 400
+
+    try:
+        # Create a database connection
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+
+        # Check if the reply exists and belongs to the current user
+        cursor.execute("SELECT reply_by_user_id FROM \"Reply\" WHERE reply_id = %s", (reply_id,))
+        reply = cursor.fetchone()
+
+        if not reply:
+            return jsonify({'error': 'Reply not found'}), 404
+
+        if reply[0] != user_id:
+            return jsonify({'error': 'You are not allowed to delete this reply'}), 403
+
+        # Delete the reply
+        cursor.execute("DELETE FROM \"Reply\" WHERE reply_id = %s", (reply_id,))
+
+        # Commit the transaction and close the connection
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Reply deleted successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Send message API (chat functionality)
+@app.route('/chat/send', methods=['POST'])
+def send_message():
+    from_user_id = request.user_id
+
+    # Get data from the request body
+    data = request.get_json()
+    to_user_id = data.get('to_user_id')
+    post_id = data.get('post_id')
+    text = data.get('text')
+
+    if not to_user_id or not post_id or not text:
+        return jsonify({'error': 'To_user_id, post_id, and text are required'}), 400
+
+    try:
+        # Create a database connection
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+
+        # Insert chat message record
+        insert_msg_query = sql.SQL(
+            "INSERT INTO \"Msg\" (to_user_id, from_user_id, create_time, text, post_id) VALUES (%s, %s, %s, %s, %s)"
+        )
+        cursor.execute(insert_msg_query, (to_user_id, from_user_id, datetime.datetime.utcnow(), text, post_id))
+
+        # Commit the transaction and close the connection
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Message sent successfully'}), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+# Retrieve user messages (chat functionality)
+@app.route('/chat/messages', methods=['GET'])
+def get_user_messages():
+    user_id = request.user_id
+
+    try:
+        # Create a database connection
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+
+        # Query all chat messages related to the user as either the sender or receiver
+        query = """
+        SELECT msg_id, to_user_id, from_user_id, create_time, text, post_id
+        FROM "Msg"
+        WHERE to_user_id = %s OR from_user_id = %s
+        ORDER BY create_time DESC
+        """
+        cursor.execute(query, (user_id, user_id))
+        messages = cursor.fetchall()
+
+        # If no messages are found
+        if not messages:
+            return jsonify({'message': 'No messages found'}), 200
+
+        # Construct the message list with user and post details
+        messages_data = []
+        for msg in messages:
+            # Fetch the sender and recipient details (optional, could be optimized to avoid multiple queries)
+            cursor.execute("SELECT email FROM \"User\" WHERE user_id = %s", (msg[1],))
+            to_user = cursor.fetchone()
+            cursor.execute("SELECT email FROM \"User\" WHERE user_id = %s", (msg[2],))
+            from_user = cursor.fetchone()
+
+            messages_data.append({
+                'msg_id': msg[0],
+                'to_user_email': to_user[0] if to_user else 'Unknown',
+                'from_user_email': from_user[0] if from_user else 'Unknown',
+                'create_time': msg[3].strftime('%Y-%m-%d %H:%M:%S'),
+                'text': msg[4],
+                'post_id': msg[5]
+            })
+
+        # Close the database connection
+        cursor.close()
+        conn.close()
+
+        return jsonify({'messages': messages_data}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 
