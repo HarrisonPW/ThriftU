@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'api_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,26 +13,36 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final ApiService _apiService = ApiService();
 
-  /*Future<void> loginUser() async {
-    final url = Uri.parse('http://34.69.245.90/login'); // Flask backend URL
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': _emailController.text,
-        'password': _passwordController.text,
-      }),
-    );
+  Future<void> loginUser() async {
+    try {
+      final response = await _apiService.login(
+        _emailController.text,
+        _passwordController.text,
+      );
 
-    if (response.statusCode == 200) {
-      Navigator.pushReplacementNamed(context, '/marketplace'); // Navigate to home page
-    } else {
+      if (response != null) {
+        if (response['error'] == 'User not activated') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Please activate your account first.')),
+          );
+          // Optionally, navigate to the activation page
+          Navigator.pushNamed(context, '/activation'); // Adjust the route name as needed
+        } else {
+          // Handle successful login
+          Navigator.pushReplacementNamed(context, '/marketplace');
+        }
+      }
+    } catch (e) {
+      // Handle error
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed. Try again.')),
+        SnackBar(content: Text(e.toString())),
       );
     }
-  }*/
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -77,10 +88,10 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 30),
             ElevatedButton(
-              //onPressed: loginUser,
-              onPressed: (){
+              onPressed: loginUser,
+              /*onPressed: (){
                 Navigator.pushNamed(context, '/marketplace');
-              },
+              },*/
               child: const Text('Login'),
             ),
             TextButton(

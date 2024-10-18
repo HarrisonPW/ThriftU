@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'api_service.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -12,6 +13,25 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final ApiService _apiService = ApiService();
+
+  Future<void> signupUser() async {
+    try {
+      final response = await _apiService.register(
+        _emailController.text,
+        _passwordController.text,
+      );
+      // Navigate to activation page after successful signup
+      Navigator.pushReplacementNamed(context, '/activation', arguments: _emailController.text);
+    } catch (e) {
+      // Handle error (e.g., show error message)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  }
+
+
 
   /*Future<void> signupUser() async {
     final url = Uri.parse('http://34.69.245.90/signup'); // Flask backend URL
@@ -79,8 +99,8 @@ class _SignupPageState extends State<SignupPage> {
             ),
             const SizedBox(height: 30),
             ElevatedButton(
-              //onPressed: signupUser,
-              onPressed: (){},
+              onPressed: signupUser,
+              //onPressed: (){},
               child: const Text('Sign Up'),
             ),
           ],

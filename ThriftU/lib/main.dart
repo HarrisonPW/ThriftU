@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:thriftu/activation_page.dart';
+import 'package:thriftu/messages_page.dart';
 import 'login_page.dart';
 import 'signup_page.dart';
 import 'marketplace_page.dart';
 import 'plaza_page.dart';
+import 'activation_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,6 +44,8 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => const SignupPage(),
         '/marketplace': (context) => const MarketplacePage(),
         '/plaza': (context) => const PlazaPage(),
+        '/messages': (context) => const MessagesPage(),
+        '/activation': (context) => const ActivationPage(),
       },
     );
   }
