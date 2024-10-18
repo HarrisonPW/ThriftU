@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:latest
+    container_name: my-postgres-container-new
+    environment:
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_USER: postgres
+      POSTGRES_DB: market
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./create_table.sql:/docker-entrypoint-initdb.d/create_table.sql
+    networks:
+      - mynetwork
+
+  app:
+    build: ../../../Library/Containers/com.tencent.xinWeChat/Data/Library/Application Support/com.tencent.xinWeChat/2.0b4.0.9/945a3c4af2a07604a7edc1a15aaede62/Message/MessageTemp/0a4694fd5f6cf16760e5e2d834a076e7/File
+    container_name: my-python-app
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_NAME: market
+      DB_USER: postgres
+      DB_PASS: mysecretpassword
+      FLASK_RUN_HOST: 0.0.0.0
+    ports:
+      - "80:5000"
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
+    driver: bridge
