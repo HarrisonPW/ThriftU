@@ -3,10 +3,13 @@ import 'package:thriftu/events.dart';
 import 'package:thriftu/post.dart';
 import 'package:thriftu/restaurants.dart';
 import 'package:thriftu/sublease.dart';
+import 'package:thriftu/activation_page.dart';
+import 'package:thriftu/messages_page.dart';
 import 'login_page.dart';
 import 'signup_page.dart';
 import 'marketplace_page.dart';
 import 'plaza_page.dart';
+import 'activation_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -49,6 +52,8 @@ class MyApp extends StatelessWidget {
         '/restaurants': (context) => const RestaurantsPage(),
         '/events': (context) => const EventsPage(),
         '/post': (context) => const PostPage(),
+        '/messages': (context) => const MessagesPage(),
+        '/activation': (context) => const ActivationPage(),
       },
     );
   }
