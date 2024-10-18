@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'bottom_navigation_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Import shared_preferences for token storage
+import 'api_service.dart'; // Adjust the import based on your structure
 
 class PostPage extends StatefulWidget {
   const PostPage({Key? key}) : super(key: key);
@@ -9,94 +10,100 @@ class PostPage extends StatefulWidget {
 }
 
 class _PostPageState extends State<PostPage> {
-  int _currentIndex = 2;
   double _price = 10.00;
   TextEditingController _titleController = TextEditingController();
   TextEditingController _descriptionController = TextEditingController();
+  String _selectedCategory = 'Furniture'; // Default category
+  final List<String> _categories = ['Furniture', 'Clothes', 'Kitchenware']; // Add more categories as needed
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+  final ApiService _apiService = ApiService(); // Create an instance of ApiService
 
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, '/marketplace');
-        break;
-      case 1:
-        Navigator.pushReplacementNamed(context, '/plaza');
-        break;
-      case 2:
-        break;
-      case 3:
-        Navigator.pushReplacementNamed(context, '/notifications');
-        break;
-      case 4:
-        Navigator.pushReplacementNamed(context, '/profile');
-        break;
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<String?> getToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
+  }
+
+  void _createPost() async {
+    final title = _titleController.text;
+    final description = _descriptionController.text;
+
+    if (title.isEmpty || description.isEmpty) {
+      // Handle validation
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
     }
-  }
 
-  void _increasePrice() {
-    setState(() {
-      _price += 1.00;
-    });
-  }
+    // Retrieve the token before creating the post
+    final token = await getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
+      return;
+    }
 
-  void _decreasePrice() {
-    setState(() {
-      if (_price > 0) {
-        _price -= 1.00;
-      }
-    });
+    try {
+      // Call the createPost method from your ApiService with the token
+      await _apiService.createPost(token, _selectedCategory, _price, description); // Pass required arguments
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post created successfully')),
+      );
+
+      // Navigate back or clear fields as needed
+      Navigator.pop(context);
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create post: $error')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Post new item'),
+        title: const Text('Post New Item'),
         backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image and Add button
-            Row(
-              children: [
-                // Existing image preview
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    image: DecorationImage(
-                      image: AssetImage('assets/images/chair.jpeg'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
-
-                // Add more images button
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.black, width: 2),
-                  ),
-                  child: Icon(Icons.add, size: 40),
-                ),
-              ],
+            // Category Dropdown
+            const Text(
+              'Category',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            DropdownButton<String>(
+              value: _selectedCategory,
+              items: _categories.map((String category) {
+                return DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedCategory = newValue!;
+                });
+              },
             ),
             const SizedBox(height: 20),
 
-            // Title
+            // Title Text Field
             const Text(
               'Title',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -104,16 +111,14 @@ class _PostPageState extends State<PostPage> {
             const SizedBox(height: 10),
             TextField(
               controller: _titleController,
-              decoration: InputDecoration(
-                hintText: 'Enter title here',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Enter title',
               ),
             ),
             const SizedBox(height: 20),
 
-            // Description
+            // Description Text Field
             const Text(
               'Description',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -121,67 +126,41 @@ class _PostPageState extends State<PostPage> {
             const SizedBox(height: 10),
             TextField(
               controller: _descriptionController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: 'Descriptions...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Enter description',
               ),
             ),
             const SizedBox(height: 20),
 
-            // Price and +/- buttons
+            // Price Text Field
             const Text(
               'Price',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                // Price display
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '\$${_price.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(width: 10),
-
-                // Minus Button
-                IconButton(
-                  onPressed: _decreasePrice,
-                  icon: const Icon(Icons.remove),
-                  color: Colors.black,
-                  iconSize: 30,
-                ),
-
-                // Plus Button
-                IconButton(
-                  onPressed: _increasePrice,
-                  icon: const Icon(Icons.add),
-                  color: Colors.black,
-                  iconSize: 30,
-                ),
-              ],
+            TextField(
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Enter price',
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _price = double.tryParse(value) ?? 0.00; // Update price on input
+                });
+              },
             ),
-            const Spacer(),
+            const SizedBox(height: 20),
 
             // Post Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  // Handle post action here
-                },
+                onPressed: _createPost, // Call the function to create a post
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.all(16),
-                  backgroundColor: Colors.blue[300], // Button color
+                  backgroundColor: Colors.blue[300],
                 ),
                 child: const Text(
                   'POST',
@@ -195,10 +174,6 @@ class _PostPageState extends State<PostPage> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: CustomBottomNavigationBar(
-        currentIndex: _currentIndex,
-        onItemTapped: _onItemTapped,
       ),
     );
   }

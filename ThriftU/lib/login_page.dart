@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,7 +32,12 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushNamed(context, '/activation'); // Adjust the route name as needed
         } else {
           // Handle successful login
-          Navigator.pushReplacementNamed(context, '/marketplace');
+          final String token = response['token']; // Adjust based on your API response
+
+          // Store token securely
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', token);
+          Navigator.pushReplacementNamed(context, '/main_navigation');
         }
       }
     } catch (e) {

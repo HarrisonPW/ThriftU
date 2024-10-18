@@ -195,10 +195,6 @@ class _PlazaPageState extends State<PlazaPage> {
           ],
         ),
       ),
-      bottomNavigationBar: CustomBottomNavigationBar(
-        currentIndex: _currentIndex,
-        onItemTapped: _onItemTapped,
-      ),
     );
   }
 }
