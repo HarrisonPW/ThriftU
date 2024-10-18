@@ -26,8 +26,12 @@ class _PostPageState extends State<PostPage> {
   }
 
   Future<String?> getToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      //
+    }
   }
 
   void _createPost() async {

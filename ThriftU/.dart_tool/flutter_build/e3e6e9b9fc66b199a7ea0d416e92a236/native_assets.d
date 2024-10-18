@@ -1,0 +1,1 @@
+ /Users/yeqiongwei/Desktop/ThriftU/ThriftU/.dart_tool/flutter_build/e3e6e9b9fc66b199a7ea0d416e92a236/native_assets.yaml: 
