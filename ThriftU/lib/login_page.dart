@@ -29,10 +29,10 @@ class _LoginPageState extends State<LoginPage> {
             SnackBar(content: Text('Please activate your account first.')),
           );
           // Optionally, navigate to the activation page
-          Navigator.pushNamed(context, '/activation'); // Adjust the route name as needed
+          Navigator.pushNamed(context, '/activation');
         } else {
           // Handle successful login
-          final String token = response['token']; // Adjust based on your API response
+          final String token = response['token'];
 
           // Store token securely
           SharedPreferences prefs = await SharedPreferences.getInstance();

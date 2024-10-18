@@ -52,14 +52,13 @@ class ApiService {
       Uri.parse('$baseUrl/post'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token', // Include the token in the headers
+        'Authorization': '$token',
       },
       body: jsonEncode({
         'post_type': postType,
         'price': price,
         'text': text,
-        // If you have file_ids, you can include them here as well
-        'file_ids': [], // Update this with actual file IDs if needed
+        'file_ids': [],
       }),
     );
 

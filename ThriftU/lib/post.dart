@@ -57,13 +57,13 @@ class _PostPageState extends State<PostPage> {
 
     try {
       // Call the createPost method from your ApiService with the token
-      await _apiService.createPost(token, _selectedCategory, _price, description); // Pass required arguments
+      await _apiService.createPost(token, _selectedCategory, _price, description);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Post created successfully')),
       );
 
       // Navigate back or clear fields as needed
-      Navigator.pop(context);
+      Navigator.pushReplacementNamed(context, '/marketplace');
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to create post: $error')),
