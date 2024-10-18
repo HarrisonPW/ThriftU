@@ -45,16 +45,39 @@ class _SignupPageState extends State<SignupPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Text(
+              'ThriftU',
+              style: const TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF8EACCD), // Change color if needed
+              ),
+              textAlign: TextAlign.center, // Center the text
+            ),
+            const SizedBox(height: 50),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0), // Rounded corners
+                ),
+              ),
             ),
             const SizedBox(height: 20),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                prefixIcon: Icon(Icons.password),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0), // Rounded corners
+                ),
+              ),
+              obscureText: true,
+            ),
+            const SizedBox(height: 30),
             ElevatedButton(
               onPressed: signupUser,
               child: const Text('Sign Up'),
