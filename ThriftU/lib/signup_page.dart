@@ -13,7 +13,7 @@ class _SignupPageState extends State<SignupPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  Future<void> signupUser() async {
+  /*Future<void> signupUser() async {
     final url = Uri.parse('http://34.69.245.90/signup'); // Flask backend URL
     final response = await http.post(
       url,
@@ -34,7 +34,7 @@ class _SignupPageState extends State<SignupPage> {
         SnackBar(content: Text('Signup failed. Try again.')),
       );
     }
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +46,10 @@ class _SignupPageState extends State<SignupPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'ThriftU',
+              'thriftU',
               style: const TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
+                fontSize: 44,
+                fontWeight: FontWeight.w900,
                 color: Color(0xFF8EACCD), // Change color if needed
               ),
               textAlign: TextAlign.center, // Center the text
@@ -79,7 +79,8 @@ class _SignupPageState extends State<SignupPage> {
             ),
             const SizedBox(height: 30),
             ElevatedButton(
-              onPressed: signupUser,
+              //onPressed: signupUser,
+              onPressed: (){},
               child: const Text('Sign Up'),
             ),
           ],
