@@ -7,7 +7,9 @@ from EmailSender import send_verification_email
 import jwt
 import datetime
 import os
+from flask_cors import CORS
 app = Flask(__name__)
+CORS(app)
 
 # Database connection information
 # DB_HOST = "localhost"
