@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:thriftu/events.dart';
+import 'package:thriftu/post.dart';
+import 'package:thriftu/restaurants.dart';
+import 'package:thriftu/sublease.dart';
 import 'login_page.dart';
 import 'signup_page.dart';
 import 'marketplace_page.dart';
@@ -41,6 +45,10 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => const SignupPage(),
         '/marketplace': (context) => const MarketplacePage(),
         '/plaza': (context) => const PlazaPage(),
+        '/sublease': (context) => const SubleasePage(),
+        '/restaurants': (context) => const RestaurantsPage(),
+        '/events': (context) => const EventsPage(),
+        '/post': (context) => const PostPage(),
       },
     );
   }
