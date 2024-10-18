@@ -1,8 +1,8 @@
 
--- drop DATABASE market;
---
---
--- CREATE DATABASE market;
+drop DATABASE market;
+
+
+CREATE DATABASE market;
 
 
 
