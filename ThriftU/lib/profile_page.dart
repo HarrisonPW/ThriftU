@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+
+import 'api_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -14,6 +17,16 @@ class _ProfilePageState extends State<ProfilePage> {
   File? _profileImage; // To store the selected profile image
   final ImagePicker _picker = ImagePicker();
   bool _showListings = true;
+  final ApiService apiService = ApiService();
+
+  Future<String?> getToken() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      //
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -42,12 +55,30 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+
+    final token = await getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
+      return;
+    }
+
     if (pickedFile != null) {
       setState(() {
-        _profileImage = File(pickedFile.path);
+        _profileImage = File(pickedFile.path);  // Store the selected image locally
       });
+
+      // Upload the image to the backend
+      try {
+        await apiService.uploadFile(_profileImage!, token);
+        print('Profile image uploaded successfully');
+      } catch (e) {
+        print('Error uploading profile image: $e');
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +118,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 radius: 50,
                 backgroundImage: _profileImage != null
                     ? FileImage(_profileImage!) // Display selected image
-                    : AssetImage('assets/images/profile.jpg') as ImageProvider, // Default image
+                    : AssetImage('assets/images/profile.jpeg') as ImageProvider, // Default image
                 child: Align(
                   alignment: Alignment.bottomRight,
                   child: CircleAvatar(

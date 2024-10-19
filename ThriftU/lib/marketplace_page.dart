@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'api_service.dart';
 
 class MarketplacePage extends StatefulWidget {
   const MarketplacePage({Key? key}) : super(key: key);
@@ -10,33 +12,65 @@ class MarketplacePage extends StatefulWidget {
 }
 
 class _MarketplacePageState extends State<MarketplacePage> {
-  int _currentIndex = 0; // Track the current index for the bottom navigation bar
-  List<dynamic> _posts = []; // To hold the fetched posts
+  int _currentIndex = 0;
+  List<dynamic> _furniturePosts = [];
+  List<dynamic> _clothesPosts = [];
+  List<dynamic> _kitchenwarePosts = [];
+  final ApiService apiService = ApiService();
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _fetchPosts(); // Fetch posts when the page loads
-  // }
+  @override
+  void initState() {
+    super.initState();
+    _fetchPosts(); // Fetch posts when the page loads
+  }
 
-  // Future<void> _fetchPosts() async {
-  //   try {
-  //     final response = await http.get(Uri.parse('http://34.69.245.90/posts')); // Update with your API endpoint
-  //
-  //     if (response.statusCode == 200) {
-  //       setState(() {
-  //         _posts = jsonDecode(response.body); // Update the state with fetched posts
-  //       });
-  //     } else {
-  //       throw Exception('Failed to load posts');
-  //     }
-  //   } catch (error) {
-  //     // Handle error (show snackbar or dialog)
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Error fetching posts: $error')),
-  //     );
-  //   }
-  // }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Access route arguments after the context is ready
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null && args['currentIndex'] != null) {
+      setState(() {
+        _currentIndex = args['currentIndex'];  // Restore the current index for the bottom nav
+      });
+    }
+  }
+
+
+  Future<String?> getToken() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      //
+    }
+  }
+
+  Future<void> _fetchPosts() async {
+    final token = await getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
+      return;
+    }
+
+    try {
+      final posts = await apiService.getUserPosts(token);
+
+      setState(() {
+        // Categorize posts based on post_type
+        _furniturePosts = posts.where((post) => post['post_type'] == 'Furniture').toList();
+        _clothesPosts = posts.where((post) => post['post_type'] == 'Clothes').toList();
+        _kitchenwarePosts = posts.where((post) => post['post_type'] == 'Kitchenware').toList();
+      });
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching posts: $error')),
+      );
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -84,85 +118,56 @@ class _MarketplacePageState extends State<MarketplacePage> {
           ),
         ],
       ),
-      // body: Padding(
-      //   padding: const EdgeInsets.all(16.0),
-      //   child: _posts.isEmpty
-      //       ? const Center(child: CircularProgressIndicator()) // Loading indicator
-      //       : ListView.builder(
-      //     itemCount: _posts.length,
-      //     itemBuilder: (context, index) {
-      //       final post = _posts[index];
-      //       return _buildItem(
-      //         post['text'], // Title from the post
-      //         post['image_url'], // Image URL (add this field to your post model)
-      //         post['price'], // Price from the post
-      //       );
-      //     },
-      //   ),
-      // ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            // Search bar
-            Container(
-              margin: const EdgeInsets.only(bottom: 16.0),
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search',
-                  border: InputBorder.none,
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-            ),
-            // Category Section 1
-            _buildCategorySection(
-              title: 'Furnitures',
-              items: [
-                _buildItem('Sofa', 'https://via.placeholder.com/140', 57.0),
-                _buildItem('Table chair', 'https://via.placeholder.com/140', 20.0),
-                _buildItem('Chair', 'https://via.placeholder.com/140', 15.0),
-                _buildItem('Mattress', 'https://via.placeholder.com/140', 50.0),
-              ],
-            ),
-            const SizedBox(height: 16.0),
-            // Category Section 2
-            _buildCategorySection(
-              title: 'Clothes',
-              items: [
-                _buildItem('Suit', 'https://via.placeholder.com/140', 15.0),
-                _buildItem('T-shirt', 'https://via.placeholder.com/140', 10.0),
-                _buildItem('Dress', 'https://via.placeholder.com/140', 25.0),
-                _buildItem('Tie', 'https://via.placeholder.com/140', 5.0),
-              ],
-            ),
-            const SizedBox(height: 16.0),
-            // Category Section 3
-            _buildCategorySection(
-              title: 'Kitchenware',
-              items: [
-                _buildItem('Spatula', 'https://via.placeholder.com/140', 2.0),
-                _buildItem('Bowls', 'https://via.placeholder.com/140', 5.0),
-                _buildItem('Cutleries', 'https://via.placeholder.com/140', 15.0),
-                _buildItem('Blender', 'https://via.placeholder.com/140', 20.0),
-              ],
-            ),
-            const SizedBox(height: 16.0),
-            // Add more categories similarly if needed...
-          ],
-        ),
+        child: _buildMarketplaceBody(),
       ),
+    );
+  }
+
+  Widget _buildMarketplaceBody() {
+    return ListView(
+      children: [
+        // Search bar
+        Container(
+          margin: const EdgeInsets.only(bottom: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          child: const TextField(
+            decoration: InputDecoration(
+              hintText: 'Search',
+              border: InputBorder.none,
+              prefixIcon: Icon(Icons.search),
+            ),
+          ),
+        ),
+        // Category: Furniture
+        _buildCategorySection(
+          title: 'Furnitures',
+          posts: _furniturePosts,
+        ),
+        const SizedBox(height: 16.0),
+        // Category: Clothes
+        _buildCategorySection(
+          title: 'Clothes',
+          posts: _clothesPosts,
+        ),
+        const SizedBox(height: 16.0),
+        // Category: Kitchenware
+        _buildCategorySection(
+          title: 'Kitchenware',
+          posts: _kitchenwarePosts,
+        ),
+      ],
     );
   }
 
   Widget _buildCategorySection({
     required String title,
-    required List<Widget> items,
+    required List<dynamic> posts,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,10 +193,18 @@ class _MarketplacePageState extends State<MarketplacePage> {
         ),
         const SizedBox(height: 8.0),
         SizedBox(
-          height: 180.0, // Height for each horizontal scroll section
-          child: ListView(
+          height: 180.0,
+          child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            children: items,
+            itemCount: posts.length,
+            itemBuilder: (context, index) {
+              final post = posts[index];
+              return _buildItem(
+                post['text'], // Title from the post
+                post['image_url'] ?? 'https://via.placeholder.com/140', // Placeholder if no image URL
+                post['price'], // Price from the post
+              );
+            },
           ),
         ),
       ],
@@ -235,58 +248,4 @@ class _MarketplacePageState extends State<MarketplacePage> {
       ),
     );
   }
-
-  // Widget to build a single item in the marketplace
-  // Widget _buildItem(String name, String imageUrl, double price) {
-  //   return GestureDetector(
-  //     onTap: () {
-  //       // Navigate to the post details page, passing the post data
-  //       Navigator.pushNamed(context, '/postDetails', arguments: {
-  //         'name': name,
-  //         'imageUrl': imageUrl,
-  //         'price': price,
-  //       });
-  //     },
-  //     child: Container(
-  //       margin: const EdgeInsets.only(bottom: 16.0),
-  //       child: Row(
-  //         children: [
-  //           ClipRRect(
-  //             borderRadius: BorderRadius.circular(10.0),
-  //             child: Image.network(
-  //               imageUrl,
-  //               height: 100.0,
-  //               width: 100.0,
-  //               fit: BoxFit.cover,
-  //               errorBuilder: (context, error, stackTrace) {
-  //                 return const Center(child: Icon(Icons.error, size: 50));
-  //               },
-  //             ),
-  //           ),
-  //           const SizedBox(width: 10),
-  //           Expanded(
-  //             child: Column(
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 Text(
-  //                   name,
-  //                   style: const TextStyle(
-  //                     fontWeight: FontWeight.bold,
-  //                   ),
-  //                 ),
-  //                 Text(
-  //                   '\$${price.toStringAsFixed(2)}',
-  //                   style: const TextStyle(
-  //                     color: Colors.blue,
-  //                     fontWeight: FontWeight.w600,
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 }

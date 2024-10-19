@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
 
 class ApiService {
-  final String baseUrl = 'http://34.69.245.90'; // Replace with your actual backend URL
+  final String baseUrl = 'http://34.69.245.90';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     final response = await http.post(
@@ -13,12 +15,11 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data; // Make sure this includes the token
+      return data;
     } else {
       throw Exception('Failed to log in: ${response.body}');
     }
   }
-
 
   Future<Map<String, dynamic>> register(String email, String password) async {
     final response = await http.post(
@@ -33,6 +34,7 @@ class ApiService {
       throw Exception('Failed to register: ${response.body}');
     }
   }
+
   Future<Map<String, dynamic>> activateUser(String email, String code) async {
     final response = await http.post(
       Uri.parse('$baseUrl/activate'),
@@ -67,6 +69,49 @@ class ApiService {
     }
   }
 
+  Future<void> uploadFile(File file, String token) async {
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload'));
+
+    // Attach the file
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        file.path,
+        filename: basename(file.path),
+      ),
+    );
+
+    request.headers['Authorization'] = '$token';
+    request.headers['Content-Type'] = 'multipart/form-data';
+
+    var response = await request.send();
+
+    if (response.statusCode == 200) {
+      print("File uploaded successfully.");
+    } else {
+      throw Exception('Failed to upload file: ${response.statusCode}');
+    }
+  }
+
+  Future<List<dynamic>> getUserPosts(String token) async {
+    final url = Uri.parse('$baseUrl/posts');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+      },
+    );
+
+    print(response.body);
+
+    if (response.statusCode == 200) {
+      print("Data fetched successfully.");
+      final responseData = jsonDecode(response.body);
+      return responseData['posts'];
+    } else {
+      throw Exception('Failed to load posts: ${response.statusCode}');
+    }
+  }
 
 
 

@@ -10,9 +10,9 @@ class PostPage extends StatefulWidget {
 }
 
 class _PostPageState extends State<PostPage> {
-  double _price = 10.00;
   TextEditingController _titleController = TextEditingController();
   TextEditingController _descriptionController = TextEditingController();
+  TextEditingController _priceController = TextEditingController();
   String _selectedCategory = 'Furniture'; // Default category
   final List<String> _categories = ['Furniture', 'Clothes', 'Kitchenware']; // Add more categories as needed
 
@@ -22,6 +22,7 @@ class _PostPageState extends State<PostPage> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
@@ -37,6 +38,7 @@ class _PostPageState extends State<PostPage> {
   void _createPost() async {
     final title = _titleController.text;
     final description = _descriptionController.text;
+    final price = double.tryParse(_priceController.text) ?? 0.00;
 
     if (title.isEmpty || description.isEmpty) {
       // Handle validation
@@ -57,13 +59,17 @@ class _PostPageState extends State<PostPage> {
 
     try {
       // Call the createPost method from your ApiService with the token
-      await _apiService.createPost(token, _selectedCategory, _price, description);
+      await _apiService.createPost(token, _selectedCategory, price, title);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Post created successfully')),
       );
 
       // Navigate back or clear fields as needed
-      Navigator.pushReplacementNamed(context, '/marketplace');
+      // Navigator.pushNamed(context, '/marketplace');
+      _titleController.clear();
+      _descriptionController.clear();
+      _priceController.clear();
+
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to create post: $error')),
@@ -144,16 +150,12 @@ class _PostPageState extends State<PostPage> {
             ),
             const SizedBox(height: 10),
             TextField(
+              controller: _priceController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 hintText: 'Enter price',
               ),
-              onChanged: (value) {
-                setState(() {
-                  _price = double.tryParse(value) ?? 0.00; // Update price on input
-                });
-              },
             ),
             const SizedBox(height: 20),
 
