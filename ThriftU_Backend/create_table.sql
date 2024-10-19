@@ -18,7 +18,7 @@ CREATE TABLE "User" (
 
 CREATE TABLE "Post" (
                         post_id SERIAL PRIMARY KEY,
-                        post_type VARCHAR(10) ,
+                        post_type VARCHAR(255) ,
                         price NUMERIC(10, 2),
                         text TEXT,
                         create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
