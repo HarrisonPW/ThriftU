@@ -8,6 +8,7 @@ import jwt
 import datetime
 import os
 from flask_cors import CORS
+
 app = Flask(__name__)
 CORS(app)
 
@@ -55,6 +56,7 @@ def check_token():
 def generate_code():
     return random.randint(10000, 99999)
 
+
 # Function to validate email format
 def is_valid_email(email):
     # Use a regular expression to check if the email format is valid
@@ -62,11 +64,9 @@ def is_valid_email(email):
     return re.match(email_regex, email) is not None
 
 
-
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({'message': 'Welcome to our API'})
-
 
 
 # Registration API
@@ -121,6 +121,7 @@ def register():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Activate user API
 @app.route('/activate', methods=['POST'])
 def activate_user():
@@ -173,6 +174,7 @@ def activate_user():
 # Secret key used to sign and verify JWT
 SECRET_KEY = 'secret_key'
 
+
 # Validate and decode the token
 def verify_token(token):
     try:
@@ -184,6 +186,7 @@ def verify_token(token):
         return {'error': 'Token has expired'}
     except jwt.InvalidTokenError:
         return {'error': 'Invalid token'}
+
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -235,15 +238,18 @@ def login():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Ensure the upload directory exists
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 import uuid
 
+
 def generate_id():
     # Use uuid4 to generate a random unique identifier
     return str(uuid.uuid4())
+
 
 # Upload file API
 @app.route('/upload', methods=['POST'])
@@ -278,7 +284,7 @@ def upload_file():
 
             # Insert file information into the file table
             insert_query = sql.SQL("INSERT INTO \"File\" ( file_path, create_time) VALUES (%s, %s) RETURNING file_id ")
-            cursor.execute(insert_query, ( file_path, datetime.datetime.utcnow()))
+            cursor.execute(insert_query, (file_path, datetime.datetime.utcnow()))
             file_id = cursor.fetchone()[0]
             # Commit the transaction and close the connection
             conn.commit()
@@ -291,9 +297,6 @@ def upload_file():
 
         except Exception as e:
             return jsonify({'error': str(e)}), 500
-
-
-
 
 
 # Create Post API
@@ -437,7 +440,6 @@ def get_file(file_id):
         cursor.close()
         conn.close()
 
-
         # Check if the file exists
         if not os.path.exists(file_path):
             return jsonify({'error': 'File does not exist on server'}), 404
@@ -447,7 +449,6 @@ def get_file(file_id):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 
 # Retrieve user posts API
@@ -599,6 +600,7 @@ def get_post_likes(post_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Reply to post API
 @app.route('/reply', methods=['POST'])
 def reply_post():
@@ -643,7 +645,8 @@ def reply_post():
         insert_reply_query = sql.SQL(
             "INSERT INTO \"Reply\" (reply_by_user_id, reply_text, create_time, to_user_id, to_post_id, to_reply_id) VALUES (%s, %s, %s, %s, %s, %s)"
         )
-        cursor.execute(insert_reply_query, (user_id, reply_text, datetime.datetime.utcnow(), to_user_id, post_id, reply_id))
+        cursor.execute(insert_reply_query,
+                       (user_id, reply_text, datetime.datetime.utcnow(), to_user_id, post_id, reply_id))
 
         # Commit the transaction and close the connection
         conn.commit()
@@ -708,6 +711,7 @@ def get_post_replies(post_id):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Delete post API
 @app.route('/post/delete', methods=['POST'])
@@ -846,6 +850,8 @@ def send_message():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 # Retrieve user messages (chat functionality)
 @app.route('/chat/messages', methods=['GET'])
 def get_user_messages():
@@ -903,6 +909,110 @@ def get_user_messages():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/follow', methods=['POST'])
+def follow_user():
+    user_id = request.user_id  # Get the current user's ID from the token
+    data = request.get_json()
+    following_id = data.get('following_id')
+
+    if not following_id:
+        return jsonify({'error': 'Following user ID is required'}), 400
+
+    try:
+        conn = psycopg2.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER, password=DB_PASS)
+        cursor = conn.cursor()
+
+        # Insert follow record if it doesn't already exist
+        insert_query = sql.SQL(
+            "INSERT INTO \"Follow\" (follower_id, following_id) VALUES (%s, %s) ON CONFLICT DO NOTHING"
+        )
+        cursor.execute(insert_query, (user_id, following_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'User followed successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/unfollow', methods=['POST'])
+def unfollow_user():
+    user_id = request.user_id
+    data = request.get_json()
+    following_id = data.get('following_id')
+
+    if not following_id:
+        return jsonify({'error': 'Following user ID is required'}), 400
+
+    try:
+        conn = psycopg2.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER, password=DB_PASS)
+        cursor = conn.cursor()
+
+        # Delete the follow record
+        delete_query = sql.SQL("DELETE FROM \"Follow\" WHERE follower_id = %s AND following_id = %s")
+        cursor.execute(delete_query, (user_id, following_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'User unfollowed successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/followers/<int:user_id>', methods=['GET'])
+def get_followers(user_id):
+    try:
+        conn = psycopg2.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER, password=DB_PASS)
+        cursor = conn.cursor()
+
+        # Query followers for the given user
+        query = """
+        SELECT u.user_id, u.email
+        FROM "Follow" f
+        JOIN "User" u ON f.follower_id = u.user_id
+        WHERE f.following_id = %s
+        """
+        cursor.execute(query, (user_id,))
+        followers = cursor.fetchall()
+
+        followers_list = [{'user_id': follower[0], 'email': follower[1]} for follower in followers]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'followers': followers_list}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/following/<int:user_id>', methods=['GET'])
+def get_following(user_id):
+    try:
+        conn = psycopg2.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER, password=DB_PASS)
+        cursor = conn.cursor()
+
+        # Query users that the given user is following
+        query = """
+        SELECT u.user_id, u.email
+        FROM "Follow" f
+        JOIN "User" u ON f.following_id = u.user_id
+        WHERE f.follower_id = %s
+        """
+        cursor.execute(query, (user_id,))
+        following = cursor.fetchall()
+
+        following_list = [{'user_id': follow[0], 'email': follow[1]} for follow in following]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'following': following_list}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

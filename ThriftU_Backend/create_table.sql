@@ -63,3 +63,14 @@ CREATE TABLE "Msg" (
                        text VARCHAR(255) ,
                        post_id INT
 );
+
+CREATE TABLE "Follow" (
+                          follow_id SERIAL PRIMARY KEY,
+                          follower_id INT NOT NULL,
+                          following_id INT NOT NULL,
+                          follow_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          UNIQUE (follower_id, following_id),
+                          FOREIGN KEY (follower_id) REFERENCES "User"(user_id),
+                          FOREIGN KEY (following_id) REFERENCES "User"(user_id)
+);
+
