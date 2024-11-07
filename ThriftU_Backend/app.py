@@ -1015,5 +1015,41 @@ def get_following(user_id):
         return jsonify({'error': str(e)}), 500
 
 
+# Search by email
+@app.route('/search_user', methods=['GET'])
+def search_user():
+    email = request.args.get('email') #Example: search_user?email=xxxx@gmail.com
+
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id, active FROM \"User\" WHERE email = %s", (email,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        user_id, active = user
+
+        if active != '1':
+            return jsonify({'error': 'User is not activated'}), 403
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'user_id': user_id}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

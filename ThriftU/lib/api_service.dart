@@ -101,7 +101,7 @@ class ApiService {
     final response = await http.get(
       url,
       headers: {
-        'Authorization': token,
+        'Authorization': '$token',
       },
     );
 
@@ -131,7 +131,43 @@ class ApiService {
     }
   }
 
+  Future<void> sendMessage(String token, String toUserId, String postId, String text) async {
+    final url = Uri.parse('$baseUrl/chat/send');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+      body: jsonEncode({
+        'to_user_id': toUserId,
+        'post_id': postId,
+        'text': text,
+      }),
+    );
 
+    if (response.statusCode != 201) {
+      throw Exception('Failed to send message: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchMessages(String token) async {
+    final url = Uri.parse('$baseUrl/chat/messages');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+      },
+    );
+    print(response.body);
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(responseData['messages']);
+    } else {
+      throw Exception('Failed to fetch messages: ${response.statusCode} ${response.body}');
+    }
+  }
 
 
 // Add more methods for other endpoints (e.g., activate_user)
