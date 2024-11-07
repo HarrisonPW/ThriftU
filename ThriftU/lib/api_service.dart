@@ -49,7 +49,7 @@ class ApiService {
     }
   }
 
-  Future<void> createPost(String token, String postType, double price, String text) async {
+  Future<void> createPost(String token, String postType, double price, String text, List<int> fileIds) async {
     final response = await http.post(
       Uri.parse('$baseUrl/post'),
       headers: {
@@ -60,7 +60,7 @@ class ApiService {
         'post_type': postType,
         'price': price,
         'text': text,
-        'file_ids': [],
+        'file_ids': fileIds,
       }),
     );
 
@@ -69,7 +69,7 @@ class ApiService {
     }
   }
 
-  Future<void> uploadFile(File file, String token) async {
+  Future<int> uploadFile(File file, String token) async {
     var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload'));
 
     // Attach the file
@@ -86,8 +86,11 @@ class ApiService {
 
     var response = await request.send();
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 201) {
       print("File uploaded successfully.");
+      final responseData = await http.Response.fromStream(response);
+      final data = jsonDecode(responseData.body);
+      return data['file_id'];
     } else {
       throw Exception('Failed to upload file: ${response.statusCode}');
     }
@@ -112,6 +115,22 @@ class ApiService {
       throw Exception('Failed to load posts: ${response.statusCode}');
     }
   }
+
+  Future<String> getFileUrl(int fileId, String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/file/$fileId'),
+      headers: {
+        'Authorization': token,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return response.request!.url.toString(); // Returns the URL of the image
+    } else {
+      throw Exception('Failed to load file: ${response.statusCode}');
+    }
+  }
+
 
 
 

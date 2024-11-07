@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'api_service.dart';
 
 class MarketplacePage extends StatefulWidget {
@@ -17,6 +16,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
   List<dynamic> _clothesPosts = [];
   List<dynamic> _kitchenwarePosts = [];
   final ApiService apiService = ApiService();
+  Map<int, List<String>> postImages = {};
 
   @override
   void initState() {
@@ -65,6 +65,22 @@ class _MarketplacePageState extends State<MarketplacePage> {
         _clothesPosts = posts.where((post) => post['post_type'] == 'Clothes').toList();
         _kitchenwarePosts = posts.where((post) => post['post_type'] == 'Kitchenware').toList();
       });
+
+      for (var post in posts) {
+        if (post['files'] != null && post['files'].isNotEmpty) {
+          List<String> imageUrls = [];
+          for (var fileId in post['files']) {
+            final imageUrl = await apiService.getFileUrl(fileId, token);
+            imageUrls.add(imageUrl);
+          }
+          postImages[post['post_id']] = imageUrls; // Store list of image URLs in the map
+        } else {
+          postImages[post['post_id']] = []; // No images if there are no file_ids
+        }
+      }
+
+      setState(() {});
+
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching posts: $error')),
@@ -199,10 +215,13 @@ class _MarketplacePageState extends State<MarketplacePage> {
             itemCount: posts.length,
             itemBuilder: (context, index) {
               final post = posts[index];
+              final postId = post['post_id'];
+              final imageUrls = postImages[postId] ?? []; // Get image URLs from postImages map
+
               return _buildItem(
-                post['text'], // Title from the post
-                post['image_url'] ?? 'https://via.placeholder.com/140', // Placeholder if no image URL
-                post['price'], // Price from the post
+                name: post['text'], // Title from the post
+                imageUrls: imageUrls.isNotEmpty ? imageUrls : ['https://via.placeholder.com/140'], // Use imageUrls or placeholder
+                price: post['price'], // Price from the post
               );
             },
           ),
@@ -211,7 +230,11 @@ class _MarketplacePageState extends State<MarketplacePage> {
     );
   }
 
-  Widget _buildItem(String name, String imageUrl, double price) {
+  Widget _buildItem({
+    required String name,
+    required List<String> imageUrls,
+    required double price,
+  }) {
     return Container(
       width: 140.0, // Width of each item
       margin: const EdgeInsets.only(right: 8.0),
@@ -220,15 +243,37 @@ class _MarketplacePageState extends State<MarketplacePage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10.0),
-            child: Image.network(
-              imageUrl,
-              height: 120.0,
-              width: 140.0,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Center(child: Icon(Icons.error, size: 50));
-              },
-            ),
+            child: imageUrls.length == 1
+                ? Image.network(
+                  imageUrls[0],
+                  height: 120.0,
+                  width: 140.0,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Center(child: Icon(Icons.error, size: 50));
+                  },
+                )
+                : SizedBox(
+                  height: 120.0,
+                  width: 140.0,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: imageUrls.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Image.network(
+                          imageUrls[index],
+                          fit: BoxFit.cover,
+                          width: 140.0,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(child: Icon(Icons.error, size: 50));
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
           ),
           const SizedBox(height: 8.0),
           Text(
@@ -248,4 +293,5 @@ class _MarketplacePageState extends State<MarketplacePage> {
       ),
     );
   }
+
 }

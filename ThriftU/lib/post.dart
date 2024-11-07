@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Import shared_preferences for token storage
-import 'api_service.dart'; // Adjust the import based on your structure
+import 'api_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class PostPage extends StatefulWidget {
   const PostPage({Key? key}) : super(key: key);
@@ -18,6 +20,9 @@ class _PostPageState extends State<PostPage> {
 
   final ApiService _apiService = ApiService(); // Create an instance of ApiService
 
+  final ImagePicker _picker = ImagePicker();
+  List<File> _selectedImages = [];
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -32,6 +37,22 @@ class _PostPageState extends State<PostPage> {
       return prefs.getString('auth_token');
     } catch (e) {
       //
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    if (_selectedImages.length >= 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You can only add up to 6 images')),
+      );
+      return;
+    }
+
+    final pickedFile = await _picker.pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImages.add(File(pickedFile.path));
+      });
     }
   }
 
@@ -58,8 +79,14 @@ class _PostPageState extends State<PostPage> {
     }
 
     try {
-      // Call the createPost method from your ApiService with the token
-      await _apiService.createPost(token, _selectedCategory, price, title);
+      List<int> fileIds = [];
+
+      for (File file in _selectedImages) {
+        final fileId = await _apiService.uploadFile(file, token);
+        fileIds.add(fileId);
+      }
+
+      await _apiService.createPost(token, _selectedCategory, price, title, fileIds);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Post created successfully')),
       );
@@ -69,6 +96,9 @@ class _PostPageState extends State<PostPage> {
       _titleController.clear();
       _descriptionController.clear();
       _priceController.clear();
+      setState(() {
+        _selectedImages.clear();
+      });
 
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,6 +140,60 @@ class _PostPageState extends State<PostPage> {
                   _selectedCategory = newValue!;
                 });
               },
+            ),
+            const SizedBox(height: 20),
+
+            // Image Picker Section
+            const Text(
+              'Upload Photos (Max 6)',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            _selectedImages.isNotEmpty
+                ? Wrap(
+                    spacing: 10,
+                    children: _selectedImages.map((image) {
+                      return Stack(
+                        alignment: Alignment.topRight,
+                        children: [
+                          Image.file(
+                            image,
+                            height: 100,
+                            width: 100,
+                            fit: BoxFit.cover,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                _selectedImages.remove(image);
+                              });
+                            },
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  )
+                : Container(
+                  height: 100,
+                  color: Colors.grey[300],
+                  child: const Center(
+                    child: Text('No images selected'),
+                  ),
+                ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                ElevatedButton(
+                  onPressed: () => _pickImage(ImageSource.gallery),
+                  child: const Text('Select from Gallery'),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () => _pickImage(ImageSource.camera),
+                  child: const Text('Take Photo'),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 
