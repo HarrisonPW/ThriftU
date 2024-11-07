@@ -131,8 +131,15 @@ class ApiService {
     }
   }
 
-  Future<void> sendMessage(String token, String toUserId, String postId, String text) async {
+
+  Future<void> sendMessage(String token, int toUserId, String postId, String text) async {
     final url = Uri.parse('$baseUrl/chat/send');
+
+    print("Sending message with parameters:");
+    print("to_user_id: $toUserId");
+    print("post_id: ${postId.isEmpty ? 'null' : postId}");
+    print("text: $text");
+
     final response = await http.post(
       url,
       headers: {
@@ -145,6 +152,9 @@ class ApiService {
         'text': text,
       }),
     );
+
+    print(response.statusCode);
+    print(response.body);
 
     if (response.statusCode != 201) {
       throw Exception('Failed to send message: ${response.body}');
@@ -166,6 +176,25 @@ class ApiService {
       return List<Map<String, dynamic>>.from(responseData['messages']);
     } else {
       throw Exception('Failed to fetch messages: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>?> searchUser(String token, String email) async {
+    final url = Uri.parse('$baseUrl/search_user?email=$email');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 404) {
+      return null; // User not found
+    } else {
+      throw Exception('Failed to search user: ${response.body}');
     }
   }
 

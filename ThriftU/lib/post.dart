@@ -116,155 +116,158 @@ class _PostPageState extends State<PostPage> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Category Dropdown
-            const Text(
-              'Category',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            DropdownButton<String>(
-              value: _selectedCategory,
-              items: _categories.map((String category) {
-                return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(category),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedCategory = newValue!;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Category Dropdown
+              const Text(
+                'Category',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              DropdownButton<String>(
+                value: _selectedCategory,
+                items: _categories.map((String category) {
+                  return DropdownMenuItem<String>(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedCategory = newValue!;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
 
-            // Image Picker Section
-            const Text(
-              'Upload Photos (Max 6)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            _selectedImages.isNotEmpty
-                ? Wrap(
-                    spacing: 10,
-                    children: _selectedImages.map((image) {
-                      return Stack(
-                        alignment: Alignment.topRight,
-                        children: [
-                          Image.file(
-                            image,
-                            height: 100,
-                            width: 100,
-                            fit: BoxFit.cover,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.red),
-                            onPressed: () {
-                              setState(() {
-                                _selectedImages.remove(image);
-                              });
-                            },
-                          ),
-                        ],
-                      );
-                    }).toList(),
-                  )
-                : Container(
-                  height: 100,
-                  color: Colors.grey[300],
-                  child: const Center(
-                    child: Text('No images selected'),
+              // Image Picker Section
+              const Text(
+                'Upload Photos (Max 6)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              _selectedImages.isNotEmpty
+                  ? Wrap(
+                spacing: 10,
+                children: _selectedImages.map((image) {
+                  return Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      Image.file(
+                        image,
+                        height: 100,
+                        width: 100,
+                        fit: BoxFit.cover,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.red),
+                        onPressed: () {
+                          setState(() {
+                            _selectedImages.remove(image);
+                          });
+                        },
+                      ),
+                    ],
+                  );
+                }).toList(),
+              )
+                  : Container(
+                height: 100,
+                color: Colors.grey[300],
+                child: const Center(
+                  child: Text('No images selected'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    child: const Text('Select from Gallery'),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    child: const Text('Take Photo'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Title Text Field
+              const Text(
+                'Title',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter title',
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Description Text Field
+              const Text(
+                'Description',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter description',
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Price Text Field
+              const Text(
+                'Price',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _priceController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter price',
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Post Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _createPost, // Call the function to create a post
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(16),
+                    backgroundColor: Colors.blue[300],
+                  ),
+                  child: const Text(
+                    'POST',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                ElevatedButton(
-                  onPressed: () => _pickImage(ImageSource.gallery),
-                  child: const Text('Select from Gallery'),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () => _pickImage(ImageSource.camera),
-                  child: const Text('Take Photo'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Title Text Field
-            const Text(
-              'Title',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Enter title',
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Description Text Field
-            const Text(
-              'Description',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Enter description',
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Price Text Field
-            const Text(
-              'Price',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _priceController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Enter price',
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Post Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _createPost, // Call the function to create a post
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(16),
-                  backgroundColor: Colors.blue[300],
-                ),
-                child: const Text(
-                  'POST',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
 }
