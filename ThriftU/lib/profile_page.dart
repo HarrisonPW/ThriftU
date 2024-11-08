@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 import 'api_service.dart';
+import 'item_details_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -18,13 +19,22 @@ class _ProfilePageState extends State<ProfilePage> {
   final ImagePicker _picker = ImagePicker();
   bool _showListings = true;
   final ApiService apiService = ApiService();
+  Map<int, List<String>> postImages = {};
+  List<dynamic> userPosts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserPosts();
+  }
 
   Future<String?> getToken() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       return prefs.getString('auth_token');
     } catch (e) {
-      //
+      print('Error fetching token: $e');
+      return null;
     }
   }
 
@@ -50,6 +60,64 @@ class _ProfilePageState extends State<ProfilePage> {
       case 4:
       // Stay on the Profile Page
         break;
+    }
+  }
+
+  Future<void> _fetchUserPosts() async {
+    final token = await getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
+      return;
+    }
+
+    try {
+      // Fetch user posts
+      final posts = await apiService.getUserPosts(token);
+      setState(() {
+        userPosts = posts;
+      });
+
+      // Fetch associated image URLs for each post
+      for (var post in posts) {
+        if (post['files'] != null && post['files'].isNotEmpty) {
+          List<String> imageUrls = [];
+          for (var fileId in post['files']) {
+            final imageUrl = await apiService.getFileUrl(fileId, token);
+            imageUrls.add(imageUrl);
+          }
+          postImages[post['post_id']] = imageUrls;
+        } else {
+          postImages[post['post_id']] = ['https://via.placeholder.com/140'];
+        }
+      }
+
+      setState(() {}); // Trigger UI update
+
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching posts: $error')),
+      );
+    }
+  }
+
+  Future<void> _navigateToDetails(int postId) async {
+    final token = await getToken();
+    if (token != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ItemDetailsPage(
+            postId: postId,
+            token: token,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
     }
   }
 
@@ -86,10 +154,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final String userName = "Your Name";
     final int followersCount = 120;
     final int followingCount = 75;
-    // final List<String> listings = ["Item 1", "Item 2", "Item 3"];
-    final List<Map<String, String>> listings = [
-      {"image": "assets/images/chair.jpeg", "title": "Office chair", "price": "\$10"}
-    ];
 
     final List<Map<String, String>> likes = [];
 
@@ -97,7 +161,7 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('@your name', style: TextStyle(color: Colors.black)),
+        title: Text('@$userName', style: TextStyle(color: Colors.black)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -111,80 +175,52 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Profile picture, name, location
             InkWell(
-              onTap: _pickImage, // Pick image on tap
+              onTap: _pickImage,
               child: CircleAvatar(
                 radius: 50,
                 backgroundImage: _profileImage != null
-                    ? FileImage(_profileImage!) // Display selected image
-                    : AssetImage('assets/images/profile.jpeg') as ImageProvider, // Default image
+                    ? FileImage(_profileImage!)
+                    : AssetImage('assets/images/profile.jpeg') as ImageProvider,
                 child: Align(
                   alignment: Alignment.bottomRight,
                   child: CircleAvatar(
                     backgroundColor: Colors.white,
                     radius: 15,
-                    child: Icon(
-                      Icons.edit,
-                      size: 20,
-                      color: Colors.grey,
-                    ),
+                    child: Icon(Icons.edit, size: 20, color: Colors.grey),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 10),
-            Text(
-              userName,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text(userName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
-
-            // Followers and Following counts
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Column(
                   children: [
-                    Text(
-                      '$followersCount',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Text('$followersCount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const Text('Followers'),
                   ],
                 ),
                 const SizedBox(width: 50),
                 Column(
                   children: [
-                    Text(
-                      '$followingCount',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Text('$followingCount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const Text('Following'),
                   ],
                 ),
               ],
             ),
             const SizedBox(height: 30),
-
-            // Leave the area below listing blank as requested
-            // Toggle Buttons for Listings and Likes
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 GestureDetector(
                   onTap: () {
                     setState(() {
-                      _showListings = true; // Show listings
+                      _showListings = true;
                     });
                   },
                   child: Container(
@@ -196,17 +232,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Column(
                       children: [
                         Text(
-                          '1',
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          '${userPosts.length}',
+                          style: const TextStyle(color: Colors.blue, fontSize: 20, fontWeight: FontWeight.bold),
                         ),
-                        const Text(
-                          'Listings',
-                          style: TextStyle(color: Colors.blue),
-                        ),
+                        const Text('Listings', style: TextStyle(color: Colors.blue)),
                       ],
                     ),
                   ),
@@ -214,7 +243,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 GestureDetector(
                   onTap: () {
                     setState(() {
-                      _showListings = false; // Show likes
+                      _showListings = false;
                     });
                   },
                   child: Container(
@@ -226,17 +255,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Column(
                       children: [
                         Text(
-                          '0',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          '${likes.length}',
+                          style: const TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.bold),
                         ),
-                        const Text(
-                          'Likes',
-                          style: TextStyle(color: Colors.green),
-                        ),
+                        const Text('Likes', style: TextStyle(color: Colors.green)),
                       ],
                     ),
                   ),
@@ -245,47 +267,52 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 20),
 
-            // User Listings or Likes based on the selected toggle
+            // Listings or Likes based on toggle
             Expanded(
-              child: _showListings && listings.isEmpty || !_showListings && likes.isEmpty
+              child: _showListings && userPosts.isEmpty || !_showListings && likes.isEmpty
                   ? Center(
-                child: Text(
-                  "Nothing here, go find something you like!",
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
-                ),
-              )
+                    child: Text(
+                      "Nothing here, go find something you like!",
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  )
                   : ListView.builder(
-                itemCount: _showListings ? listings.length : likes.length,
-                itemBuilder: (context, index) {
-                  final data = _showListings ? listings[index] : likes[index];
-                  return Card(
-                    elevation: 4,
-                    margin: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      leading: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          data["image"]!,
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
+                    itemCount: _showListings ? userPosts.length : likes.length,
+                    itemBuilder: (context, index) {
+                      final data = _showListings ? userPosts[index] : likes[index];
+                      final postID = _showListings ? userPosts[index]['post_id'] : likes[index];
+                      final imageUrls = _showListings ? postImages[data['post_id']] ?? [] : [];
+                      final displayImage = imageUrls.isNotEmpty ? imageUrls[0] : 'https://via.placeholder.com/140';
+
+                      return Card(
+                        elevation: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                      title: Text(
-                        data["title"]!,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      trailing: Text(
-                        data["price"]!,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  );
-                },
-              ),
+                        child: ListTile(
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              displayImage,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          title: Text(
+                            data["text"] ?? 'Untitled',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          trailing: Text(
+                            '\$${data["price"]?.toStringAsFixed(2) ?? '0.00'}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          onTap: () => _navigateToDetails(postID),
+                        ),
+                      );
+                    },
+                  ),
             ),
           ],
         ),

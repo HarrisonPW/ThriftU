@@ -58,6 +58,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
           List<String> imageUrls = [];
           for (var fileId in post['files']) {
             final imageUrl = await apiService.getFileUrl(fileId, token);
+            print(imageUrl);
             imageUrls.add(imageUrl);
           }
           postImages[post['post_id']] = imageUrls; // Store list of image URLs in the map
@@ -227,35 +228,35 @@ class _MarketplacePageState extends State<MarketplacePage> {
               borderRadius: BorderRadius.circular(10.0),
               child: imageUrls.length == 1
                   ? Image.network(
-                imageUrls[0],
-                height: 120.0,
-                width: 140.0,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Center(child: Icon(Icons.error, size: 50));
-                },
-              )
+                    imageUrls[0],
+                    height: 120.0,
+                    width: 140.0,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(child: Icon(Icons.error, size: 50));
+                    },
+                  )
                   : SizedBox(
-                height: 120.0,
-                width: 140.0,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: imageUrls.length,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Image.network(
-                        imageUrls[index],
-                        fit: BoxFit.cover,
-                        width: 140.0,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Center(child: Icon(Icons.error, size: 50));
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
+                    height: 120.0,
+                    width: 140.0,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: imageUrls.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Image.network(
+                            imageUrls[index],
+                            fit: BoxFit.cover,
+                            width: 140.0,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(child: Icon(Icons.error, size: 50));
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
             ),
             const SizedBox(height: 8.0),
             Text(
