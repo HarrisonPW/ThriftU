@@ -1018,7 +1018,7 @@ def get_following(user_id):
 # Search by email
 @app.route('/search_user', methods=['GET'])
 def search_user():
-    email = request.args.get('email') #Example: search_user?email=xxxx@gmail.com
+    email = request.args.get('email')  # Example: search_user?email=xxxx@gmail.com
 
     if not email:
         return jsonify({'error': 'Email is required'}), 400
@@ -1046,6 +1046,55 @@ def search_user():
         conn.close()
 
         return jsonify({'user_id': user_id}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/post/<int:post_id>', methods=['GET'])
+def get_post_by_id(post_id):
+    try:
+        # Create a database connection
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+        query = """
+        SELECT p.post_id, p.post_type, p.price, p.text, p.create_time, u.email
+        FROM "Post" p
+        JOIN "User" u ON p.user_id = u.user_id
+        WHERE p.post_id = %s
+        """
+        cursor.execute(query, (post_id,))
+        post = cursor.fetchone()
+
+        if not post:
+            return jsonify({'error': 'Post not found'}), 404
+
+        cursor.execute(
+            "SELECT f.file_id, f.file_path FROM \"Post_file\" pf JOIN \"File\" f ON pf.file_id = f.file_id WHERE pf.post_id = %s",
+            (post_id,))
+        files = cursor.fetchall()
+
+        files_list = [{'file_id': file[0], 'file_path': file[1]} for file in files]
+
+        post_data = {
+            'post_id': post[0],
+            'post_type': post[1],
+            'price': float(post[2]) if post[2] else None,
+            'text': post[3],
+            'create_time': post[4].strftime('%Y-%m-%d %H:%M:%S'),
+            'user_email': post[5],
+            'files': files_list
+        }
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'post': post_data}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
