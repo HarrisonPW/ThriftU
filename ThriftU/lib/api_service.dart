@@ -198,6 +198,127 @@ class ApiService {
     }
   }
 
+  Future<void> likePost(String token, int postId) async {
+    final url = Uri.parse('$baseUrl/like');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'post_id': postId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to like/unlike post: ${response.body}');
+    }
+  }
+
+  Future<int> getPostLikes(String token, int postId) async {
+    final url = Uri.parse('$baseUrl/post/$postId/likes');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['like_count'];
+    } else {
+      throw Exception('Failed to retrieve like count: ${response.body}');
+    }
+  }
+
+  Future<void> replyToPost(String token, int postId, String replyText, {int? replyId}) async {
+    final url = Uri.parse('$baseUrl/reply');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'to_post_id': postId,
+        'reply_text': replyText,
+        'to_reply_id': replyId, // Optional if replying to another comment
+      }),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to post reply: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getPostReplies(String token, int postId) async {
+    final url = Uri.parse('$baseUrl/post/$postId/replies');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['replies']);
+    } else {
+      throw Exception('Failed to retrieve replies: ${response.body}');
+    }
+  }
+
+  Future<void> deletePost(String token, int postId) async {
+    final url = Uri.parse('$baseUrl/post/delete');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'post_id': postId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete post: ${response.body}');
+    }
+  }
+
+  Future<void> deleteReply(String token, int replyId) async {
+    final url = Uri.parse('$baseUrl/reply/delete');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'reply_id': replyId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete reply: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getPostDetails(String token, int postId) async {
+    final url = Uri.parse('$baseUrl/post/$postId');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['post']; // Extract 'post' from the response
+    } else {
+      throw Exception('Failed to fetch post details: ${response.body}');
+    }
+  }
 
 // Add more methods for other endpoints (e.g., activate_user)
 }

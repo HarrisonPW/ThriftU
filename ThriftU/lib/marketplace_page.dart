@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
+import 'item_details_page.dart';
 
 class MarketplacePage extends StatefulWidget {
   const MarketplacePage({Key? key}) : super(key: key);
@@ -24,26 +25,13 @@ class _MarketplacePageState extends State<MarketplacePage> {
     _fetchPosts(); // Fetch posts when the page loads
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // Access route arguments after the context is ready
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null && args['currentIndex'] != null) {
-      setState(() {
-        _currentIndex = args['currentIndex'];  // Restore the current index for the bottom nav
-      });
-    }
-  }
-
-
   Future<String?> getToken() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       return prefs.getString('auth_token');
     } catch (e) {
-      //
+      print('Error fetching token: $e');
+      return null;
     }
   }
 
@@ -60,7 +48,6 @@ class _MarketplacePageState extends State<MarketplacePage> {
       final posts = await apiService.getUserPosts(token);
 
       setState(() {
-        // Categorize posts based on post_type
         _furniturePosts = posts.where((post) => post['post_type'] == 'Furniture').toList();
         _clothesPosts = posts.where((post) => post['post_type'] == 'Clothes').toList();
         _kitchenwarePosts = posts.where((post) => post['post_type'] == 'Kitchenware').toList();
@@ -88,28 +75,22 @@ class _MarketplacePageState extends State<MarketplacePage> {
     }
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _currentIndex = index; // Update the current index
-    });
-
-    // Navigate to the appropriate page based on the tapped index
-    switch (index) {
-      case 0:
-        Navigator.pushNamed(context, '/marketplace');
-        break;
-      case 1:
-        Navigator.pushNamed(context, '/plaza'); // Update with actual route
-        break;
-      case 2:
-        Navigator.pushNamed(context, '/post'); // Update with actual route
-        break;
-      case 3:
-        Navigator.pushNamed(context, '/notifications'); // Update with actual route
-        break;
-      case 4:
-        Navigator.pushNamed(context, '/profile'); // Update with actual route
-        break;
+  Future<void> _navigateToDetails(int postId) async {
+    final token = await getToken();
+    if (token != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ItemDetailsPage(
+            postId: postId,
+            token: token,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
     }
   }
 
@@ -160,19 +141,16 @@ class _MarketplacePageState extends State<MarketplacePage> {
             ),
           ),
         ),
-        // Category: Furniture
         _buildCategorySection(
-          title: 'Furnitures',
+          title: 'Furniture',
           posts: _furniturePosts,
         ),
         const SizedBox(height: 16.0),
-        // Category: Clothes
         _buildCategorySection(
           title: 'Clothes',
           posts: _clothesPosts,
         ),
         const SizedBox(height: 16.0),
-        // Category: Kitchenware
         _buildCategorySection(
           title: 'Kitchenware',
           posts: _kitchenwarePosts,
@@ -219,9 +197,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
               final imageUrls = postImages[postId] ?? []; // Get image URLs from postImages map
 
               return _buildItem(
-                name: post['text'], // Title from the post
-                imageUrls: imageUrls.isNotEmpty ? imageUrls : ['https://via.placeholder.com/140'], // Use imageUrls or placeholder
-                price: post['price'], // Price from the post
+                name: post['text'],
+                imageUrls: imageUrls.isNotEmpty ? imageUrls : ['https://via.placeholder.com/140'],
+                price: post['price'],
+                postId: postId,
               );
             },
           ),
@@ -234,64 +213,92 @@ class _MarketplacePageState extends State<MarketplacePage> {
     required String name,
     required List<String> imageUrls,
     required double price,
+    required int postId,
   }) {
-    return Container(
-      width: 140.0, // Width of each item
-      margin: const EdgeInsets.only(right: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10.0),
-            child: imageUrls.length == 1
-                ? Image.network(
-                  imageUrls[0],
-                  height: 120.0,
-                  width: 140.0,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Center(child: Icon(Icons.error, size: 50));
+    return GestureDetector(
+      onTap: () => _navigateToDetails(postId),
+      child: Container(
+        width: 140.0,
+        margin: const EdgeInsets.only(right: 8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10.0),
+              child: imageUrls.length == 1
+                  ? Image.network(
+                imageUrls[0],
+                height: 120.0,
+                width: 140.0,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(child: Icon(Icons.error, size: 50));
+                },
+              )
+                  : SizedBox(
+                height: 120.0,
+                width: 140.0,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: imageUrls.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Image.network(
+                        imageUrls[index],
+                        fit: BoxFit.cover,
+                        width: 140.0,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Center(child: Icon(Icons.error, size: 50));
+                        },
+                      ),
+                    );
                   },
-                )
-                : SizedBox(
-                  height: 120.0,
-                  width: 140.0,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: imageUrls.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: Image.network(
-                          imageUrls[index],
-                          fit: BoxFit.cover,
-                          width: 140.0,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(child: Icon(Icons.error, size: 50));
-                          },
-                        ),
-                      );
-                    },
-                  ),
                 ),
-          ),
-          const SizedBox(height: 8.0),
-          Text(
-            name,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          Text(
-            '\$${price.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.blue,
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 8.0),
+            Text(
+              name,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        ],
+            Text(
+              '\$${price.toStringAsFixed(2)}',
+              style: const TextStyle(
+                color: Colors.blue,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _currentIndex = index; // Update the current index
+    });
+
+    // Navigate to the appropriate page based on the tapped index
+    switch (index) {
+      case 0:
+        Navigator.pushNamed(context, '/marketplace');
+        break;
+      case 1:
+        Navigator.pushNamed(context, '/plaza');
+        break;
+      case 2:
+        Navigator.pushNamed(context, '/post');
+        break;
+      case 3:
+        Navigator.pushNamed(context, '/notifications');
+        break;
+      case 4:
+        Navigator.pushNamed(context, '/profile');
+        break;
+    }
+  }
 }
