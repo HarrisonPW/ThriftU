@@ -20,7 +20,8 @@ CREATE TABLE "Post" (
                         post_id SERIAL PRIMARY KEY,
                         post_type VARCHAR(255) ,
                         price NUMERIC(10, 2),
-                        text TEXT,
+                        title TEXT,
+                        description TEXT,
                         create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         user_id INT NOT NULL);
 

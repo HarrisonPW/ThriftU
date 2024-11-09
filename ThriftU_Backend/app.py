@@ -308,11 +308,12 @@ def create_post():
     data = request.get_json()
     post_type = data.get('post_type')
     price = data.get('price')
-    text = data.get('text')
+    title = data.get('title')
+    description = data.get('description')
     file_ids = data.get('file_ids')  # Assuming file_ids is a list of file IDs
 
-    if not post_type or not text:
-        return jsonify({'error': 'Post type and text are required'}), 400
+    if not post_type or not title or not description:
+        return jsonify({'error': 'Post type, title, and description are required'}), 400
 
     try:
         # Create a database connection
@@ -326,9 +327,9 @@ def create_post():
 
         # Insert new post data
         insert_post_query = sql.SQL(
-            "INSERT INTO \"Post\" (post_type, price, text, user_id, create_time) VALUES (%s, %s, %s, %s, %s) RETURNING post_id"
+            "INSERT INTO \"Post\" (post_type, price, title,description, user_id, create_time) VALUES (%s, %s, %s, %s,%s, %s) RETURNING post_id"
         )
-        cursor.execute(insert_post_query, (post_type, price, text, user_id, datetime.datetime.utcnow()))
+        cursor.execute(insert_post_query, (post_type, price, title, description, user_id, datetime.datetime.utcnow()))
 
         # Get the newly inserted post_id
         post_id = cursor.fetchone()[0]
@@ -360,11 +361,12 @@ def update_post():
     post_id = data.get('post_id')
     post_type = data.get('post_type')
     price = data.get('price')
-    text = data.get('text')
+    title = data.get('title')
+    description = data.get('description')
     file_ids = data.get('file_ids')  # Assuming file_ids is a list of file IDs
 
-    if not post_id or not post_type or not text:
-        return jsonify({'error': 'Post ID, post type, and text are required'}), 400
+    if not post_id or not post_type or not title or not description:
+        return jsonify({'error': 'Post ID, post type, description, and title are required'}), 400
 
     try:
         # Create a database connection
@@ -393,9 +395,10 @@ def update_post():
 
         # Insert new post data
         insert_post_query = sql.SQL(
-            "INSERT INTO \"Post\" (post_id, post_type, price, text, user_id, create_time) VALUES (%s, %s, %s, %s, %s, %s)"
+            "INSERT INTO \"Post\" (post_id, post_type, price, title, description, user_id, create_time) VALUES (%s, %s, %s, %s, %s, %s, %s)"
         )
-        cursor.execute(insert_post_query, (post_id, post_type, price, text, user_id, datetime.datetime.utcnow()))
+        cursor.execute(insert_post_query,
+                       (post_id, post_type, price, title, description, user_id, datetime.datetime.utcnow()))
 
         # Insert latest files associated with Post_file table
         if file_ids:
@@ -468,7 +471,7 @@ def get_user_posts():
 
         # Query all posts and associated file information for the user
         query = """
-        SELECT p.post_id, p.post_type, p.price, p.text, p.create_time, f.file_id
+        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, f.file_id
         FROM "Post" p
         LEFT JOIN "Post_file" pf ON p.post_id = pf.post_id
         LEFT JOIN "File" f ON pf.file_id = f.file_id
@@ -490,8 +493,9 @@ def get_user_posts():
                     'post_id': post[0],
                     'post_type': post[1],
                     'price': float(post[2]),
-                    'text': post[3],
-                    'create_time': post[4].strftime('%Y-%m-%d %H:%M:%S'),
+                    'title': post[3],
+                    'description': post[4],
+                    'create_time': post[5].strftime('%Y-%m-%d %H:%M:%S'),
                     'files': []
                 }
             # Add file path to the list of files for this post
@@ -1063,7 +1067,7 @@ def get_post_by_id(post_id):
         )
         cursor = conn.cursor()
         query = """
-        SELECT p.post_id, p.post_type, p.price, p.text, p.create_time, u.email
+        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, u.email
         FROM "Post" p
         JOIN "User" u ON p.user_id = u.user_id
         WHERE p.post_id = %s
@@ -1085,9 +1089,10 @@ def get_post_by_id(post_id):
             'post_id': post[0],
             'post_type': post[1],
             'price': float(post[2]) if post[2] else None,
-            'text': post[3],
-            'create_time': post[4].strftime('%Y-%m-%d %H:%M:%S'),
-            'user_email': post[5],
+            'title': post[3],
+            'description': post[4],
+            'create_time': post[5].strftime('%Y-%m-%d %H:%M:%S'),
+            'user_email': post[6],
             'files': files_list
         }
 
@@ -1095,6 +1100,135 @@ def get_post_by_id(post_id):
         conn.close()
 
         return jsonify({'post': post_data}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/all_posts', methods=['GET'])
+def get_all_posts():
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+        query = """
+        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, u.email
+        FROM "Post" p
+        JOIN "User" u ON p.user_id = u.user_id
+        LEFT JOIN "Post_file" pf ON p.post_id = pf.post_id
+        LEFT JOIN "File" f ON pf.file_id = f.file_id
+        """
+        cursor.execute(query)
+        posts = cursor.fetchall()
+        posts_data = {}
+        for post in posts:
+            post_id = post[0]
+            if post_id not in posts_data:
+                posts_data[post_id] = {
+                    'post_id': post[0],
+                    'post_type': post[1],
+                    'price': float(post[2]) if post[2] else None,
+                    'title': post[3],
+                    'description': post[4],
+                    'create_time': post[5].strftime('%Y-%m-%d %H:%M:%S'),
+                    'user_email': post[6],
+                    'files': []
+                }
+            if post[7]:
+                posts_data[post_id]['files'].append(post[7])
+
+        posts_list = list(posts_data.values())
+        cursor.close()
+        conn.close()
+
+        return jsonify({'posts': posts_list}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/chat2/send', methods=['POST'])
+def send_message_without_post():
+    from_user_id = request.user_id
+    data = request.get_json()
+    to_user_id = data.get('to_user_id')
+    text = data.get('text')
+
+    if not to_user_id or not text:
+        return jsonify({'error': 'To_user_id and text are required'}), 400
+
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+
+        insert_msg_query = sql.SQL(
+            "INSERT INTO \"Msg\" (to_user_id, from_user_id, create_time, text) VALUES (%s, %s, %s, %s)"
+        )
+        cursor.execute(insert_msg_query, (to_user_id, from_user_id, datetime.datetime.utcnow(), text))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Message sent successfully'}), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/chat2/messages', methods=['GET'])
+def get_user_messages_without_post():
+    user_id = request.user_id
+
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+
+        query = """
+        SELECT msg_id, to_user_id, from_user_id, create_time, text
+        FROM "Msg"
+        WHERE to_user_id = %s OR from_user_id = %s
+        ORDER BY create_time DESC
+        """
+        cursor.execute(query, (user_id, user_id))
+        messages = cursor.fetchall()
+
+        if not messages:
+            return jsonify({'message': 'No messages found'}), 200
+
+        messages_data = []
+        for msg in messages:
+            cursor.execute("SELECT email FROM \"User\" WHERE user_id = %s", (msg[1],))
+            to_user = cursor.fetchone()
+            cursor.execute("SELECT email FROM \"User\" WHERE user_id = %s", (msg[2],))
+            from_user = cursor.fetchone()
+
+            messages_data.append({
+                'msg_id': msg[0],
+                'to_user_email': to_user[0] if to_user else 'Unknown',
+                'from_user_email': from_user[0] if from_user else 'Unknown',
+                'create_time': msg[3].strftime('%Y-%m-%d %H:%M:%S'),
+                'text': msg[4]
+            })
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'messages': messages_data}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
