@@ -224,6 +224,12 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "nested",
+      "rootUri": "file:///Users/yeqiongwei/.pub-cache/hosted/pub.dev/nested-1.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "path",
       "rootUri": "file:///Users/yeqiongwei/.pub-cache/hosted/pub.dev/path-1.9.0",
       "packageUri": "lib/",
@@ -258,6 +264,12 @@
       "rootUri": "file:///Users/yeqiongwei/.pub-cache/hosted/pub.dev/plugin_platform_interface-2.1.8",
       "packageUri": "lib/",
       "languageVersion": "3.0"
+    },
+    {
+      "name": "provider",
+      "rootUri": "file:///Users/yeqiongwei/.pub-cache/hosted/pub.dev/provider-6.1.2",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
     },
     {
       "name": "shared_preferences",
@@ -380,7 +392,7 @@
       "languageVersion": "3.5"
     }
   ],
-  "generated": "2024-10-20T20:06:36.110988Z",
+  "generated": "2024-11-08T18:47:46.930804Z",
   "generator": "pub",
   "generatorVersion": "3.5.3",
   "flutterRoot": "file:///Users/yeqiongwei/development/flutter",
