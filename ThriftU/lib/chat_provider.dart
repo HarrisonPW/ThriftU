@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 
+
 class ChatProvider extends ChangeNotifier {
   final String token;
-  final int userId;
-  final String postId; // Add postId as a required parameter
+  final int contactUserId;  // For sending messages
+  final String contactUserEmail;  // For filtering messages
+
   List<Map<String, dynamic>> _messages = [];
   bool _isLoading = true;
   String? _errorMessage;
 
-  ChatProvider({required this.token, required this.userId, required this.postId}) {
+  ChatProvider({
+    required this.token,
+    required this.contactUserId,
+    required this.contactUserEmail,
+  }) {
     fetchMessages();
   }
 
@@ -23,7 +29,13 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _messages = await ApiService().fetchMessages(token);
+      // Fetch all messages
+      final allMessages = await ApiService().fetchMessages(token);
+
+      // Filter messages by email
+      _messages = allMessages.where((message) {
+        return (message['from_user_email'] == contactUserEmail || message['to_user_email'] == contactUserEmail);
+      }).toList();
     } catch (e) {
       _errorMessage = 'Failed to load messages';
     } finally {
@@ -35,9 +47,8 @@ class ChatProvider extends ChangeNotifier {
   Future<void> sendMessage(String text) async {
     if (text.isNotEmpty) {
       try {
-        // Pass postId along with other required parameters
-        await ApiService().sendMessage(token, userId, postId, text);
-        await fetchMessages(); // Refresh messages after sending
+        await ApiService().sendMessage(token, contactUserId, text);
+        await fetchMessages();  // Refresh messages after sending
       } catch (e) {
         _errorMessage = 'Failed to send message';
         notifyListeners();

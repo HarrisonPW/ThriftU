@@ -133,29 +133,13 @@ class ApiService {
   }
 
 
-  Future<void> sendMessage(String token, int toUserId, String postId, String text) async {
-    final url = Uri.parse('$baseUrl/chat/send');
-
-    print("Sending message with parameters:");
-    print("to_user_id: $toUserId");
-    print("post_id: ${postId.isEmpty ? 'null' : postId}");
-    print("text: $text");
-
+  Future<void> sendMessage(String token, int toUserId, String text) async {
+    final url = Uri.parse('$baseUrl/chat2/send');
     final response = await http.post(
       url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
-      body: jsonEncode({
-        'to_user_id': toUserId,
-        'post_id': postId,
-        'text': text,
-      }),
+      headers: {'Authorization': token, 'Content-Type': 'application/json'},
+      body: jsonEncode({'to_user_id': toUserId, 'text': text}),
     );
-
-    print(response.statusCode);
-    print(response.body);
 
     if (response.statusCode != 201) {
       throw Exception('Failed to send message: ${response.body}');
@@ -163,13 +147,9 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> fetchMessages(String token) async {
-    final url = Uri.parse('$baseUrl/chat/messages');
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': token,
-      },
-    );
+    final url = Uri.parse('$baseUrl/chat2/messages');
+    final response = await http.get(url, headers: {'Authorization': token});
+
     print(response.body);
 
     if (response.statusCode == 200) {
@@ -180,15 +160,13 @@ class ApiService {
     }
   }
 
+
   Future<Map<String, dynamic>?> searchUser(String token, String email) async {
     final url = Uri.parse('$baseUrl/search_user?email=$email');
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json',
-      },
-    );
+    final response = await http.get(url, headers: {
+      'Authorization': token,
+      'Content-Type': 'application/json',
+    });
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
