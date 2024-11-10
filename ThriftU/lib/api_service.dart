@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart';
 
 class ApiService {
-  final String baseUrl = 'http://34.69.245.90';
+  final String baseUrl = 'http://34.44.172.61';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     final response = await http.post(
@@ -49,7 +49,7 @@ class ApiService {
     }
   }
 
-  Future<void> createPost(String token, String postType, double price, String text, List<int> fileIds) async {
+  Future<void> createPost(String token, String postType, double price, String title, String description, List<int> fileIds) async {
     final response = await http.post(
       Uri.parse('$baseUrl/post'),
       headers: {
@@ -59,7 +59,8 @@ class ApiService {
       body: jsonEncode({
         'post_type': postType,
         'price': price,
-        'text': text,
+        'title': title,
+        'description': description,
         'file_ids': fileIds,
       }),
     );
@@ -319,6 +320,26 @@ class ApiService {
       throw Exception('Failed to fetch post details: ${response.body}');
     }
   }
+
+  Future<List<Map<String, dynamic>>> getAllPosts(String token) async {
+    final url = Uri.parse('$baseUrl/all_posts');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['posts']);
+    } else {
+      throw Exception('Failed to fetch posts: ${response.body}');
+    }
+  }
+
+
 
 // Add more methods for other endpoints (e.g., activate_user)
 }

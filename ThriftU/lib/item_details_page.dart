@@ -31,17 +31,15 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
   Future<void> _fetchPostDetails() async {
     try {
       final details = await _apiService.getPostDetails(widget.token, widget.postId);
-      List<Map<String, dynamic>> updatedFiles = [];
-      for (var file in details['files']) {
-        final imageUrl = await _apiService.getFileUrl(file['file_id'], widget.token);
-        updatedFiles.add({
-          'file_id': file['file_id'],
-          'file_path': imageUrl, // Update the file_path with the URL
-        });
+      List<String> imageUrls = [];
+      for (var fileId in details['files']) {
+        final imageUrl = await _apiService.getFileUrl(fileId, widget.token);
+        print(imageUrl);
+        imageUrls.add(imageUrl);
       }
       setState(() {
         _postDetails = details;
-        _postDetails!['files'] = updatedFiles;
+        _postDetails!['files'] = imageUrls;
       });
     } catch (e) {
       print('Failed to fetch post details: $e');
@@ -107,7 +105,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
               children: [
                 // Display item details
                 Text(
-                  _postDetails!['text'],
+                  _postDetails!['title'],
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
@@ -124,7 +122,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                       scrollDirection: Axis.horizontal,
                       itemCount: _postDetails!['files'].length,
                       itemBuilder: (context, index) {
-                        final imageUrl = _postDetails!['files'][index]['file_path'];
+                        final imageUrl = _postDetails!['files'][index];
                         return Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: Image.network(imageUrl, fit: BoxFit.cover),
@@ -133,6 +131,9 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                     ),
                   ),
 
+              const SizedBox(height: 20),
+              Text('Description: ${_postDetails!['description']}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
 
               // Like and comment section

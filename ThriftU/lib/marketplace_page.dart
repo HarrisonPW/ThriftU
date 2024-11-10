@@ -45,7 +45,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
     }
 
     try {
-      final posts = await apiService.getUserPosts(token);
+      final posts = await apiService.getAllPosts(token);
 
       setState(() {
         _furniturePosts = posts.where((post) => post['post_type'] == 'Furniture').toList();
@@ -118,7 +118,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: _buildMarketplaceBody(),
+        child: RefreshIndicator(
+          onRefresh: _fetchPosts,
+          child: _buildMarketplaceBody(),
+        ),
       ),
     );
   }
@@ -198,7 +201,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
               final imageUrls = postImages[postId] ?? []; // Get image URLs from postImages map
 
               return _buildItem(
-                name: post['text'],
+                name: post['title'],
                 imageUrls: imageUrls.isNotEmpty ? imageUrls : ['https://via.placeholder.com/140'],
                 price: post['price'],
                 postId: postId,

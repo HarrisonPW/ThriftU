@@ -76,7 +76,7 @@ class _ProfilePageState extends State<ProfilePage> {
       // Fetch user posts
       final posts = await apiService.getUserPosts(token);
       setState(() {
-        userPosts = posts;
+        userPosts = posts.where((post) => post['post_type'] == 'Furniture' || post['post_type'] == 'Clothes' || post['post_type'] == 'Kitchenware').toList();;
       });
 
       // Fetch associated image URLs for each post
@@ -84,6 +84,7 @@ class _ProfilePageState extends State<ProfilePage> {
         if (post['files'] != null && post['files'].isNotEmpty) {
           List<String> imageUrls = [];
           for (var fileId in post['files']) {
+            print("file id: $fileId");
             final imageUrl = await apiService.getFileUrl(fileId, token);
             imageUrls.add(imageUrl);
           }
@@ -269,50 +270,53 @@ class _ProfilePageState extends State<ProfilePage> {
 
             // Listings or Likes based on toggle
             Expanded(
-              child: _showListings && userPosts.isEmpty || !_showListings && likes.isEmpty
-                  ? Center(
-                    child: Text(
-                      "Nothing here, go find something you like!",
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                  )
-                  : ListView.builder(
-                    itemCount: _showListings ? userPosts.length : likes.length,
-                    itemBuilder: (context, index) {
-                      final data = _showListings ? userPosts[index] : likes[index];
-                      final postID = _showListings ? userPosts[index]['post_id'] : likes[index];
-                      final imageUrls = _showListings ? postImages[data['post_id']] ?? [] : [];
-                      final displayImage = imageUrls.isNotEmpty ? imageUrls[0] : 'https://via.placeholder.com/140';
+              child: RefreshIndicator(
+                onRefresh: _fetchUserPosts,
+                child: _showListings && userPosts.isEmpty || !_showListings && likes.isEmpty
+                    ? Center(
+                      child: Text(
+                        "Nothing here, go find something you like!",
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
+                    )
+                    : ListView.builder(
+                      itemCount: _showListings ? userPosts.length : likes.length,
+                      itemBuilder: (context, index) {
+                        final data = _showListings ? userPosts[index] : likes[index];
+                        final postID = _showListings ? userPosts[index]['post_id'] : likes[index];
+                        final imageUrls = _showListings ? postImages[data['post_id']] ?? [] : [];
+                        final displayImage = imageUrls.isNotEmpty ? imageUrls[0] : 'https://via.placeholder.com/140';
 
-                      return Card(
-                        elevation: 4,
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              displayImage,
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
+                        return Card(
+                          elevation: 4,
+                          margin: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                displayImage,
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                              ),
                             ),
+                            title: Text(
+                              data["title"] ?? 'Untitled',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            trailing: Text(
+                              '\$${data["price"]?.toStringAsFixed(2) ?? '0.00'}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            onTap: () => _navigateToDetails(postID),
                           ),
-                          title: Text(
-                            data["text"] ?? 'Untitled',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          trailing: Text(
-                            '\$${data["price"]?.toStringAsFixed(2) ?? '0.00'}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          onTap: () => _navigateToDetails(postID),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
+              ),
             ),
           ],
         ),

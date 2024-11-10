@@ -86,7 +86,7 @@ class _PostPageState extends State<PostPage> {
         fileIds.add(fileId);
       }
 
-      await _apiService.createPost(token, _selectedCategory, price, title, fileIds);
+      await _apiService.createPost(token, _selectedCategory, price, title, description, fileIds);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Post created successfully')),
       );
