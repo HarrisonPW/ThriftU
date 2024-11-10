@@ -499,8 +499,8 @@ def get_user_posts():
                     'files': []
                 }
             # Add file path to the list of files for this post
-            if post[5]:
-                posts_data[post_id]['files'].append(post[5])
+            if post[6]:
+                posts_data[post_id]['files'].append(post[6])
 
         # Convert the dictionary to a list
         posts_list = list(posts_data.values())
@@ -1058,7 +1058,6 @@ def search_user():
 @app.route('/post/<int:post_id>', methods=['GET'])
 def get_post_by_id(post_id):
     try:
-        # Create a database connection
         conn = psycopg2.connect(
             host=DB_HOST,
             dbname=DB_NAME,
@@ -1066,34 +1065,29 @@ def get_post_by_id(post_id):
             password=DB_PASS
         )
         cursor = conn.cursor()
+
         query = """
-        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, u.email
+        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, f.file_id
         FROM "Post" p
-        JOIN "User" u ON p.user_id = u.user_id
+        LEFT JOIN "Post_file" pf ON p.post_id = pf.post_id
+        LEFT JOIN "File" f ON pf.file_id = f.file_id
         WHERE p.post_id = %s
         """
         cursor.execute(query, (post_id,))
-        post = cursor.fetchone()
+        post = cursor.fetchall()
 
         if not post:
             return jsonify({'error': 'Post not found'}), 404
 
-        cursor.execute(
-            "SELECT f.file_id, f.file_path FROM \"Post_file\" pf JOIN \"File\" f ON pf.file_id = f.file_id WHERE pf.post_id = %s",
-            (post_id,))
-        files = cursor.fetchall()
-
-        files_list = [{'file_id': file[0], 'file_path': file[1]} for file in files]
-
+        # Construct the post data
         post_data = {
-            'post_id': post[0],
-            'post_type': post[1],
-            'price': float(post[2]) if post[2] else None,
-            'title': post[3],
-            'description': post[4],
-            'create_time': post[5].strftime('%Y-%m-%d %H:%M:%S'),
-            'user_email': post[6],
-            'files': files_list
+            'post_id': post[0][0],
+            'post_type': post[0][1],
+            'price': float(post[0][2]) if post[0][2] else None,
+            'title': post[0][3],
+            'description': post[0][4],
+            'create_time': post[0][5].strftime('%Y-%m-%d %H:%M:%S'),
+            'files': [p[6] for p in post if p[6]]
         }
 
         cursor.close()
@@ -1116,9 +1110,8 @@ def get_all_posts():
         )
         cursor = conn.cursor()
         query = """
-        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, u.email
+        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, f.file_id
         FROM "Post" p
-        JOIN "User" u ON p.user_id = u.user_id
         LEFT JOIN "Post_file" pf ON p.post_id = pf.post_id
         LEFT JOIN "File" f ON pf.file_id = f.file_id
         """
@@ -1135,11 +1128,10 @@ def get_all_posts():
                     'title': post[3],
                     'description': post[4],
                     'create_time': post[5].strftime('%Y-%m-%d %H:%M:%S'),
-                    'user_email': post[6],
                     'files': []
                 }
-            if post[7]:
-                posts_data[post_id]['files'].append(post[7])
+            if post[6]:
+                posts_data[post_id]['files'].append(post[6])
 
         posts_list = list(posts_data.values())
         cursor.close()
