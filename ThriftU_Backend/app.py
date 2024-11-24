@@ -1226,5 +1226,54 @@ def get_user_messages_without_post():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/user/liked_posts', methods=['GET'])
+def get_user_liked_posts():
+    user_id = request.user_id
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+
+        query = """
+        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, f.file_id
+        FROM "Like" l
+        JOIN "Post" p ON l.post_id = p.post_id
+        LEFT JOIN "Post_file" pf ON p.post_id = pf.post_id
+        LEFT JOIN "File" f ON pf.file_id = f.file_id
+        WHERE l.reply_by_user_id = %s
+        """
+        cursor.execute(query, (user_id,))
+        liked_posts = cursor.fetchall()
+        if not liked_posts:
+            return jsonify({'message': 'No liked posts found'}), 200
+        posts_data = {}
+        for post in liked_posts:
+            post_id = post[0]
+            if post_id not in posts_data:
+                posts_data[post_id] = {
+                    'post_id': post[0],
+                    'post_type': post[1],
+                    'price': float(post[2]) if post[2] else None,
+                    'title': post[3],
+                    'description': post[4],
+                    'create_time': post[5].strftime('%Y-%m-%d %H:%M:%S'),
+                    'files': []
+                }
+            if post[6]:
+                posts_data[post_id]['files'].append(post[6])
+        posts_list = list(posts_data.values())
+        cursor.close()
+        conn.close()
+
+        return jsonify({'liked_posts': posts_list}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
