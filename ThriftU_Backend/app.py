@@ -8,6 +8,7 @@ import jwt
 import datetime
 import os
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app)
@@ -72,21 +73,18 @@ def home():
 # Registration API
 @app.route('/register', methods=['POST'])
 def register():
-    # Get data from the request
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
+    username = data.get('username')
 
-    # Check if required fields are provided
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), 400
+    if not email or not password or not username:
+        return jsonify({'error': 'Email, password, and username are required'}), 400
 
-    # Check if the email format is valid
     if not is_valid_email(email):
         return jsonify({'error': 'Invalid email format'}), 400
 
     try:
-        # Create a database connection
         conn = psycopg2.connect(
             host=DB_HOST,
             dbname=DB_NAME,
@@ -95,23 +93,18 @@ def register():
         )
         cursor = conn.cursor()
 
-        # Check if the email already exists
-        cursor.execute("SELECT * FROM \"User\" WHERE email = %s", (email,))
+        cursor.execute("SELECT * FROM \"User\" WHERE email = %s OR username = %s", (email, username))
         existing_user = cursor.fetchone()
 
         if existing_user:
-            return jsonify({'error': 'Email already exists'}), 400
+            return jsonify({'error': 'Email or username already exists'}), 400
 
-        # Generate a random verification code
         code = generate_code()
-
-        # Send verification email
         send_verification_email(email, code)
 
-        insert_query = sql.SQL("INSERT INTO \"User\" (email, password, code) VALUES (%s, %s, %s)")
-        cursor.execute(insert_query, (email, password, code))
+        insert_query = sql.SQL("INSERT INTO \"User\" (email, password, code, username) VALUES (%s, %s, %s, %s)")
+        cursor.execute(insert_query, (email, password, code, username))
 
-        # Commit the changes and close the connection
         conn.commit()
         cursor.close()
         conn.close()
@@ -1270,6 +1263,130 @@ def get_user_liked_posts():
         conn.close()
 
         return jsonify({'liked_posts': posts_list}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/user/profile', methods=['GET'])
+def get_user_profile():
+    user_id = request.user_id
+
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+        query = """
+        SELECT u.user_id, u.email, u.username, f.file_id
+        FROM "User" u
+        LEFT JOIN "User_file" uf ON u.user_id = uf.user_id
+        LEFT JOIN "File" f ON uf.file_id = f.file_id
+        WHERE u.user_id = %s
+        """
+        cursor.execute(query, (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        profile = {
+            'user_id': user[0],
+            'email': user[1],
+            'username': user[2],
+            'avatar_file_id': user[3]
+        }
+
+        cursor.close()
+        conn.close()
+
+        return jsonify(profile), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/user/profile', methods=['PUT'])
+def update_user_profile():
+    user_id = request.user_id
+    username = request.form.get('username')
+    avatar = request.files.get('avatar')
+
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+        if username:
+            cursor.execute("SELECT user_id FROM \"User\" WHERE username = %s AND user_id != %s", (username, user_id))
+            if cursor.fetchone():
+                return jsonify({'error': 'Username already taken'}), 400
+
+            cursor.execute("UPDATE \"User\" SET username = %s WHERE user_id = %s", (username, user_id))
+        if avatar:
+            cursor.execute("DELETE FROM \"User_file\" WHERE user_id = %s", (user_id,))
+            filename = f"avatar_{user_id}_{secure_filename(avatar.filename)}"
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            avatar.save(file_path)
+            cursor.execute(
+                "INSERT INTO \"File\" (file_path, create_time) VALUES (%s, %s) RETURNING file_id",
+                (file_path, datetime.datetime.utcnow())
+            )
+            file_id = cursor.fetchone()[0]
+            cursor.execute(
+                "INSERT INTO \"User_file\" (user_id, file_id) VALUES (%s, %s)",
+                (user_id, file_id)
+            )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Profile updated successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/user/profile/<int:user_id>', methods=['GET'])
+def get_user_profile_by_id(user_id):
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        cursor = conn.cursor()
+
+        query = """
+        SELECT u.user_id, u.email, u.username, f.file_id
+        FROM "User" u
+        LEFT JOIN "User_file" uf ON u.user_id = uf.user_id
+        LEFT JOIN "File" f ON uf.file_id = f.file_id
+        WHERE u.user_id = %s
+        """
+        cursor.execute(query, (user_id,))
+        user_data = cursor.fetchall()
+
+        if not user_data:
+            return jsonify({'error': 'User not found'}), 404
+
+        profile = {
+            'user_id': user_data[0][0],
+            'email': user_data[0][1],
+            'username': user_data[0][2],
+            'photos': [row[3] for row in user_data if row[3] is not None]
+        }
+
+        cursor.close()
+        conn.close()
+
+        return jsonify(profile), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

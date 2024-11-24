@@ -10,10 +10,12 @@
 CREATE TABLE "User" (
                         user_id SERIAL PRIMARY KEY,
                         email VARCHAR(255) NOT NULL UNIQUE,
+                        username VARCHAR(255),
                         password VARCHAR(255) NOT NULL,
                         code VARCHAR(50),
                         active VARCHAR(50) DEFAULT '0',
-                        create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE (username)
 );
 
 CREATE TABLE "Post" (
@@ -73,5 +75,13 @@ CREATE TABLE "Follow" (
                           UNIQUE (follower_id, following_id),
                           FOREIGN KEY (follower_id) REFERENCES "User"(user_id),
                           FOREIGN KEY (following_id) REFERENCES "User"(user_id)
+);
+
+CREATE TABLE "User_file" (
+                             user_id INT NOT NULL,
+                             file_id INT NOT NULL,
+                             FOREIGN KEY (user_id) REFERENCES "User"(user_id),
+                             FOREIGN KEY (file_id) REFERENCES "File"(file_id),
+                             PRIMARY KEY (user_id, file_id)
 );
 
