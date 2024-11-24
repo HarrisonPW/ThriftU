@@ -2,57 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'chat_provider.dart';
 
-class ChatPage extends StatelessWidget {
-  final int userId;
-  final String userName;
-  final String token;
-  final String postId;
-
-  const ChatPage({Key? key, required this.userId, required this.userName, required this.token, required this.postId,}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ChatProvider(token: token, userId: userId, postId: postId),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('Chat with $userName'),
-        ),
-        body: Column(
-          children: [
-            Expanded(
-              child: Consumer<ChatProvider>(
-                builder: (context, chatProvider, _) {
-                  if (chatProvider.isLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (chatProvider.errorMessage != null) {
-                    return Center(child: Text(chatProvider.errorMessage!));
-                  } else if (chatProvider.messages.isEmpty) {
-                    return const Center(child: Text('No messages.'));
-                  } else {
-                    return ListView(
-                      children: chatProvider.messages.map((message) {
-                        return ListTile(
-                          title: Text(message['text']),
-                          subtitle: Text(message['sender_name']), // Adjust based on response
-                        );
-                      }).toList(),
-                    );
-                  }
-                },
-              ),
-            ),
-            _MessageInputField(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _MessageInputField extends StatefulWidget {
   @override
-  State<_MessageInputField> createState() => _MessageInputFieldState();
+  _MessageInputFieldState createState() => _MessageInputFieldState();
 }
 
 class _MessageInputFieldState extends State<_MessageInputField> {
@@ -79,6 +31,7 @@ class _MessageInputFieldState extends State<_MessageInputField> {
               controller: _messageController,
               decoration: const InputDecoration(
                 hintText: 'Type a message',
+                border: OutlineInputBorder(),
               ),
             ),
           ),
@@ -87,6 +40,72 @@ class _MessageInputFieldState extends State<_MessageInputField> {
             onPressed: () => _sendMessage(chatProvider),
           ),
         ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+}
+
+
+class ChatPage extends StatelessWidget {
+  final int userId;  // Contact's user ID for sending messages
+  final String contactUserEmail;  // Email for filtering messages
+  final String token;
+
+  const ChatPage({
+    Key? key,
+    required this.userId,
+    required this.contactUserEmail,
+    required this.token,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => ChatProvider(
+        token: token,
+        contactUserId: userId,
+        contactUserEmail: contactUserEmail,  // Pass email to ChatProvider
+      ),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Chat with $contactUserEmail'),
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: Consumer<ChatProvider>(
+                builder: (context, chatProvider, _) {
+                  if (chatProvider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (chatProvider.errorMessage != null) {
+                    return Center(child: Text(chatProvider.errorMessage!));
+                  } else if (chatProvider.messages.isEmpty) {
+                    return const Center(child: Text('No messages.'));
+                  } else {
+                    return ListView(
+                      reverse: true, // This will make the ListView start from the bottom
+                      children: chatProvider.messages.reversed.map((message) {
+                        return ListTile(
+                          title: Text(message['text']),
+                          subtitle: Text(
+                            message['from_user_email'] == chatProvider.contactUserEmail ? chatProvider.contactUserEmail : 'You',
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  }
+                },
+              ),
+            ),
+            _MessageInputField(),  // Message input at the bottom
+          ],
+        ),
       ),
     );
   }
