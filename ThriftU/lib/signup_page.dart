@@ -13,6 +13,7 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final ApiService _apiService = ApiService();
 
   Future<void> signupUser() async {
@@ -20,6 +21,7 @@ class _SignupPageState extends State<SignupPage> {
       final response = await _apiService.register(
         _emailController.text,
         _passwordController.text,
+        _usernameController.text,
       );
       // Navigate to activation page after successful signup
       Navigator.pushReplacementNamed(context, '/activation', arguments: _emailController.text);
@@ -30,31 +32,6 @@ class _SignupPageState extends State<SignupPage> {
       );
     }
   }
-
-
-
-  /*Future<void> signupUser() async {
-    final url = Uri.parse('http://34.69.245.90/signup'); // Flask backend URL
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': _emailController.text,
-        'password': _passwordController.text,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Signup successful! Please login.')),
-      );
-      Navigator.pop(context); // Return to login page
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Signup failed. Try again.')),
-      );
-    }
-  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +52,17 @@ class _SignupPageState extends State<SignupPage> {
               textAlign: TextAlign.center, // Center the text
             ),
             const SizedBox(height: 50),
+            TextField(
+              controller: _usernameController,
+              decoration: InputDecoration(
+                labelText: 'Username',
+                prefixIcon: Icon(Icons.person),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0), // Rounded corners
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: _emailController,
               decoration: InputDecoration(
@@ -100,7 +88,6 @@ class _SignupPageState extends State<SignupPage> {
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: signupUser,
-              //onPressed: (){},
               child: const Text('Sign Up'),
             ),
           ],
