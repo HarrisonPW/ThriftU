@@ -322,6 +322,70 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getUserProfile(String token) async {
+    final url = Uri.parse('$baseUrl/user/profile');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': '$token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Map<String, dynamic>.from(data);
+    } else if (response.statusCode == 404) {
+      throw Exception('User not found: ${response.body}');
+    } else {
+      throw Exception('Failed to fetch user profile: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateUserProfile(String token, {File? avatar}) async {
+    final url = Uri.parse('$baseUrl/user/profile');
+    final request = http.MultipartRequest('PUT', url);
+
+    request.headers['Authorization'] = '$token';
+
+    if (avatar != null) {
+      final fileName = avatar.path.split('/').last;
+      request.files.add(
+        await http.MultipartFile.fromPath('avatar', avatar.path, filename: fileName),
+      );
+    }
+
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Map<String, dynamic>.from(data);
+    } else if (response.statusCode == 400) {
+      throw Exception('Bad request: ${response.body}');
+    } else {
+      throw Exception('Failed to update user profile: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getUserLikedPosts(String token) async {
+    final url = Uri.parse('$baseUrl/user/liked_posts');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['liked_posts']);
+    } else if (response.statusCode == 404) {
+      return []; // Return empty list if no liked posts are found
+    } else {
+      throw Exception('Failed to fetch liked posts: ${response.body}');
+    }
+  }
+
 
 
 // Add more methods for other endpoints (e.g., activate_user)

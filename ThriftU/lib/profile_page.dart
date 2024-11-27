@@ -21,11 +21,18 @@ class _ProfilePageState extends State<ProfilePage> {
   final ApiService apiService = ApiService();
   Map<int, List<String>> postImages = {};
   List<dynamic> userPosts = [];
+  List<dynamic> likedPosts = [];
+  Map<int, List<String>> likedPostImages = {};
+  String? userName;
+  String? userEmail;
+  String? avatarUrl;
 
   @override
   void initState() {
     super.initState();
+    _fetchUserProfile();
     _fetchUserPosts();
+    _fetchLikedPosts();
   }
 
   Future<String?> getToken() async {
@@ -35,6 +42,70 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       print('Error fetching token: $e');
       return null;
+    }
+  }
+
+  Future<void> _fetchLikedPosts() async {
+    final token = await getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
+      return;
+    }
+
+    try {
+      final posts = await apiService.getUserLikedPosts(token);
+      setState(() {
+        likedPosts = posts;
+      });
+
+      for (var post in posts) {
+        if (post['files'] != null && post['files'].isNotEmpty) {
+          List<String> imageUrls = [];
+          for (var fileId in post['files']) {
+            final imageUrl = await apiService.getFileUrl(fileId, token);
+            imageUrls.add(imageUrl);
+          }
+          likedPostImages[post['post_id']] = imageUrls;
+        } else {
+          likedPostImages[post['post_id']] = ['https://via.placeholder.com/140'];
+        }
+      }
+
+      setState(() {});
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching liked posts: $error')),
+      );
+    }
+  }
+
+  Future<void> _fetchUserProfile() async {
+    final token = await getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
+      return;
+    }
+
+    try {
+      final profile = await apiService.getUserProfile(token);
+      String? fetchedAvatarUrl;
+      if (profile['avatar_file_id'] != null) {
+        fetchedAvatarUrl = await apiService.getFileUrl(profile['avatar_file_id'], token);
+      }
+
+      setState(() {
+        userName = profile['username'] ?? 'Your Name';
+        userEmail = profile['email'] ?? 'No Email';
+        avatarUrl = fetchedAvatarUrl;
+      });
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching profile: $error')),
+      );
     }
   }
 
@@ -125,6 +196,17 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
 
+    if (pickedFile != null) {
+      final selectedImage = File(pickedFile.path);
+
+      // Update the profile photo
+      await _updateUserPhoto(selectedImage);
+    } else {
+      print('No image selected');
+    }
+  }
+
+  Future<void> _updateUserPhoto(File imageFile) async {
     final token = await getToken();
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,18 +215,17 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    if (pickedFile != null) {
-      setState(() {
-        _profileImage = File(pickedFile.path);  // Store the selected image locally
-      });
+    try {
+      final response = await apiService.updateUserProfile(token, avatar: imageFile);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response['message'] ?? 'Profile photo updated successfully')),
+      );
 
-      // Upload the image to the backend
-      try {
-        await apiService.uploadFile(_profileImage!, token);
-        print('Profile image uploaded successfully');
-      } catch (e) {
-        print('Error uploading profile image: $e');
-      }
+      await _fetchUserProfile();
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating profile photo: $error')),
+      );
     }
   }
 
@@ -152,17 +233,14 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     // Example data (replace with actual values from API or backend)
-    final String userName = "Your Name";
     final int followersCount = 120;
     final int followingCount = 75;
-
-    final List<Map<String, String>> likes = [];
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('@$userName', style: TextStyle(color: Colors.black)),
+        title: Text(userEmail ?? 'Loading...', style: const TextStyle(color: Colors.grey)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -182,7 +260,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 radius: 50,
                 backgroundImage: _profileImage != null
                     ? FileImage(_profileImage!)
-                    : AssetImage('assets/images/profile.jpeg') as ImageProvider,
+                    : (avatarUrl != null
+                      ? NetworkImage(avatarUrl!) as ImageProvider
+                      : AssetImage('assets/images/profile.jpeg')),
                 child: Align(
                   alignment: Alignment.bottomRight,
                   child: CircleAvatar(
@@ -194,7 +274,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             const SizedBox(height: 10),
-            Text(userName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(userName ?? 'Loading...', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -256,7 +336,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Column(
                       children: [
                         Text(
-                          '${likes.length}',
+                          '${likedPosts.length}',
                           style: const TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         const Text('Likes', style: TextStyle(color: Colors.green)),
@@ -271,51 +351,51 @@ class _ProfilePageState extends State<ProfilePage> {
             // Listings or Likes based on toggle
             Expanded(
               child: RefreshIndicator(
-                onRefresh: _fetchUserPosts,
-                child: _showListings && userPosts.isEmpty || !_showListings && likes.isEmpty
+                onRefresh: () => _showListings ? _fetchUserPosts() : _fetchLikedPosts(),
+                child: _showListings && userPosts.isEmpty || !_showListings && likedPosts.isEmpty
                     ? Center(
-                      child: Text(
-                        "Nothing here, go find something you like!",
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
-                      ),
-                    )
+                  child: Text(
+                    "Nothing here, go find something you like!",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                )
                     : ListView.builder(
-                      itemCount: _showListings ? userPosts.length : likes.length,
-                      itemBuilder: (context, index) {
-                        final data = _showListings ? userPosts[index] : likes[index];
-                        final postID = _showListings ? userPosts[index]['post_id'] : likes[index];
-                        final imageUrls = _showListings ? postImages[data['post_id']] ?? [] : [];
-                        final displayImage = imageUrls.isNotEmpty ? imageUrls[0] : 'https://via.placeholder.com/140';
+                  itemCount: _showListings ? userPosts.length : likedPosts.length,
+                  itemBuilder: (context, index) {
+                    final data = _showListings ? userPosts[index] : likedPosts[index];
+                    final postID = _showListings ? userPosts[index]['post_id'] : likedPosts[index]['post_id'];
+                    final imageUrls = _showListings ? postImages[postID] ?? [] : likedPostImages[postID] ?? [];
+                    final displayImage = imageUrls.isNotEmpty ? imageUrls[0] : 'https://via.placeholder.com/140';
 
-                        return Card(
-                          elevation: 4,
-                          margin: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    return Card(
+                      elevation: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            displayImage,
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
                           ),
-                          child: ListTile(
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                displayImage,
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            title: Text(
-                              data["title"] ?? 'Untitled',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            trailing: Text(
-                              '\$${data["price"]?.toStringAsFixed(2) ?? '0.00'}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            onTap: () => _navigateToDetails(postID),
-                          ),
-                        );
-                      },
-                    ),
+                        ),
+                        title: Text(
+                          data["title"] ?? 'Untitled',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        trailing: Text(
+                          '\$${data["price"]?.toStringAsFixed(2) ?? '0.00'}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onTap: () => _navigateToDetails(postID),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ],
