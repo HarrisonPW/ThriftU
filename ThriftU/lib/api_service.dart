@@ -21,11 +21,15 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> register(String email, String password) async {
+  Future<Map<String, dynamic>> register(String email, String password, String username) async {
     final response = await http.post(
       Uri.parse('$baseUrl/register'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'username': username,
+      }),
     );
 
     if (response.statusCode == 201) {
@@ -34,6 +38,7 @@ class ApiService {
       throw Exception('Failed to register: ${response.body}');
     }
   }
+
 
   Future<Map<String, dynamic>> activateUser(String email, String code) async {
     final response = await http.post(
@@ -314,6 +319,70 @@ class ApiService {
       return List<Map<String, dynamic>>.from(data['posts']);
     } else {
       throw Exception('Failed to fetch posts: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getUserProfile(String token) async {
+    final url = Uri.parse('$baseUrl/user/profile');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': '$token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Map<String, dynamic>.from(data);
+    } else if (response.statusCode == 404) {
+      throw Exception('User not found: ${response.body}');
+    } else {
+      throw Exception('Failed to fetch user profile: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateUserProfile(String token, {File? avatar}) async {
+    final url = Uri.parse('$baseUrl/user/profile');
+    final request = http.MultipartRequest('PUT', url);
+
+    request.headers['Authorization'] = '$token';
+
+    if (avatar != null) {
+      final fileName = avatar.path.split('/').last;
+      request.files.add(
+        await http.MultipartFile.fromPath('avatar', avatar.path, filename: fileName),
+      );
+    }
+
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Map<String, dynamic>.from(data);
+    } else if (response.statusCode == 400) {
+      throw Exception('Bad request: ${response.body}');
+    } else {
+      throw Exception('Failed to update user profile: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getUserLikedPosts(String token) async {
+    final url = Uri.parse('$baseUrl/user/liked_posts');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['liked_posts']);
+    } else if (response.statusCode == 404) {
+      return []; // Return empty list if no liked posts are found
+    } else {
+      throw Exception('Failed to fetch liked posts: ${response.body}');
     }
   }
 
