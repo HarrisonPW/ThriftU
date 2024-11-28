@@ -1173,7 +1173,6 @@ def send_message_without_post():
 @app.route('/chat2/messages', methods=['GET'])
 def get_user_messages_without_post():
     user_id = request.user_id
-
     try:
         conn = psycopg2.connect(
             host=DB_HOST,
@@ -1184,31 +1183,34 @@ def get_user_messages_without_post():
         cursor = conn.cursor()
 
         query = """
-        SELECT msg_id, to_user_id, from_user_id, create_time, text
-        FROM "Msg"
-        WHERE to_user_id = %s OR from_user_id = %s
-        ORDER BY create_time DESC
+        SELECT 
+            m.msg_id,
+            m.to_user_id,
+            to_user.email as to_user_email,
+            m.from_user_id,
+            from_user.email as from_user_email,
+            m.create_time,
+            m.text
+        FROM "Msg" m
+        LEFT JOIN "User" to_user ON m.to_user_id = to_user.user_id
+        LEFT JOIN "User" from_user ON m.from_user_id = from_user.user_id
+        WHERE m.to_user_id = %s OR m.from_user_id = %s
+        ORDER BY m.create_time DESC
         """
         cursor.execute(query, (user_id, user_id))
         messages = cursor.fetchall()
 
         if not messages:
             return jsonify({'message': 'No messages found'}), 200
-
-        messages_data = []
-        for msg in messages:
-            cursor.execute("SELECT email FROM \"User\" WHERE user_id = %s", (msg[1],))
-            to_user = cursor.fetchone()
-            cursor.execute("SELECT email FROM \"User\" WHERE user_id = %s", (msg[2],))
-            from_user = cursor.fetchone()
-
-            messages_data.append({
-                'msg_id': msg[0],
-                'to_user_email': to_user[0] if to_user else 'Unknown',
-                'from_user_email': from_user[0] if from_user else 'Unknown',
-                'create_time': msg[3].strftime('%Y-%m-%d %H:%M:%S'),
-                'text': msg[4]
-            })
+        messages_data = [{
+            'msg_id': msg[0],
+            'to_user_id': msg[1],
+            'to_user_email': msg[2] if msg[2] else 'Unknown',
+            'from_user_id': msg[3],
+            'from_user_email': msg[4] if msg[4] else 'Unknown',
+            'create_time': msg[5].strftime('%Y-%m-%d %H:%M:%S'),
+            'text': msg[6]
+        } for msg in messages]
 
         cursor.close()
         conn.close()
