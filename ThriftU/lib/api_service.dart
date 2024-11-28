@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart';
 
 class ApiService {
-  final String baseUrl = 'http://34.44.172.61';
+  static const String baseUrl = 'http://34.44.172.61';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     final response = await http.post(
@@ -138,7 +138,41 @@ class ApiService {
   }
 
 
-  Future<void> sendMessage(String token, int toUserId, String text) async {
+  static Future<List<Map<String, dynamic>>> fetchMessages(String token) async {
+    final url = Uri.parse('$baseUrl/chat2/messages');
+    print("Fetching messages from: $url with token: $token"); // Debug: URL and token
+
+    final response = await http.get(
+      url,
+      headers: {'Authorization': token},
+    );
+
+    print("Response status code: ${response.statusCode}"); // Debug: Status code
+    print("Response body: ${response.body}"); // Debug: Raw response body
+
+    if (response.statusCode == 200) {
+      try {
+        final responseData = jsonDecode(response.body);
+        print("Decoded response: $responseData"); // Debug: Decoded JSON
+
+        // Ensure 'messages' key is present and properly formatted
+        if (responseData['messages'] == null) {
+          throw Exception("Missing 'messages' key in response");
+        }
+
+        return List<Map<String, dynamic>>.from(responseData['messages']);
+      } catch (e) {
+        print("JSON decoding error: $e"); // Debug: JSON decoding error
+        throw Exception('Invalid JSON response: $e');
+      }
+    } else {
+      print("Failed to fetch messages: ${response.statusCode}"); // Debug: Error response
+      throw Exception('Failed to fetch messages: ${response.statusCode}');
+    }
+  }
+
+
+  static Future<void> sendMessage(String token, int toUserId, String text) async {
     final url = Uri.parse('$baseUrl/chat2/send');
     final response = await http.post(
       url,
@@ -151,27 +185,9 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchMessages(String token) async {
-    final url = Uri.parse('$baseUrl/chat2/messages');
-    final response = await http.get(url, headers: {'Authorization': token});
-
-    print(response.body);
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      return List<Map<String, dynamic>>.from(responseData['messages']);
-    } else {
-      throw Exception('Failed to fetch messages: ${response.statusCode} ${response.body}');
-    }
-  }
-
-
-  Future<Map<String, dynamic>?> searchUser(String token, String email) async {
+  static Future<Map<String, dynamic>?> searchUser(String token, String email) async {
     final url = Uri.parse('$baseUrl/search_user?email=$email');
-    final response = await http.get(url, headers: {
-      'Authorization': token,
-      'Content-Type': 'application/json',
-    });
+    final response = await http.get(url, headers: {'Authorization': token});
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);

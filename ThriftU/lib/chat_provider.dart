@@ -1,58 +1,50 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 
-
 class ChatProvider extends ChangeNotifier {
   final String token;
-  final int contactUserId;  // For sending messages
-  final String contactUserEmail;  // For filtering messages
-
+  final int contactUserId;
   List<Map<String, dynamic>> _messages = [];
-  bool _isLoading = true;
-  String? _errorMessage;
 
-  ChatProvider({
-    required this.token,
-    required this.contactUserId,
-    required this.contactUserEmail,
-  }) {
+  List<Map<String, dynamic>> get messages => _messages;
+
+  ChatProvider({required this.token, required this.contactUserId}) {
     fetchMessages();
   }
 
-  List<Map<String, dynamic>> get messages => _messages;
-  bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-
   Future<void> fetchMessages() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
     try {
-      // Fetch all messages
-      final allMessages = await ApiService().fetchMessages(token);
+      final allMessages = await ApiService.fetchMessages(token!);
+      print("Fetched messages: $allMessages");
 
-      // Filter messages by email
+      // Filter messages based on the contactUserId
       _messages = allMessages.where((message) {
-        return (message['from_user_email'] == contactUserEmail || message['to_user_email'] == contactUserEmail);
+        final fromUserId = message['from_user_id'];
+        final toUserId = message['to_user_id'];
+
+        // Include messages where the contact is either the sender or receiver
+        return (fromUserId == contactUserId || toUserId == contactUserId);
       }).toList();
-    } catch (e) {
-      _errorMessage = 'Failed to load messages';
-    } finally {
-      _isLoading = false;
+
+      // Sort messages by timestamp to ensure correct order
+      _messages.sort((a, b) => DateTime.parse(a['create_time']).compareTo(DateTime.parse(b['create_time'])));
+
       notifyListeners();
+    } catch (e) {
+      print("Failed to fetch messages: $e");
     }
   }
 
   Future<void> sendMessage(String text) async {
     if (text.isNotEmpty) {
       try {
-        await ApiService().sendMessage(token, contactUserId, text);
-        await fetchMessages();  // Refresh messages after sending
+        await ApiService.sendMessage(token, contactUserId, text);
+        await fetchMessages(); // Refresh messages after sending
       } catch (e) {
-        _errorMessage = 'Failed to send message';
-        notifyListeners();
+        print("Failed to send message: $e");
       }
+    } else {
+      print("Invalid input: token, contactUserId, or text is null");
     }
   }
 }
