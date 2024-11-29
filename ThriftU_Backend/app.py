@@ -1060,7 +1060,7 @@ def get_post_by_id(post_id):
         cursor = conn.cursor()
 
         query = """
-        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, f.file_id
+        SELECT p.post_id, p.post_type, p.price, p.title, p.description, p.create_time, f.file_id, p.user_id
         FROM "Post" p
         LEFT JOIN "Post_file" pf ON p.post_id = pf.post_id
         LEFT JOIN "File" f ON pf.file_id = f.file_id
@@ -1080,9 +1080,9 @@ def get_post_by_id(post_id):
             'title': post[0][3],
             'description': post[0][4],
             'create_time': post[0][5].strftime('%Y-%m-%d %H:%M:%S'),
-            'files': [p[6] for p in post if p[6]]
+            'files': [p[6] for p in post if p[6]],
+            'user_id': post[0][7]
         }
-
         cursor.close()
         conn.close()
 
