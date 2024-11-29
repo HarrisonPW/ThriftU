@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 import 'item_details_page.dart';
+//import 'package:firebase_analytics/firebase_analytics.dart';
 
 class MarketplacePage extends StatefulWidget {
   const MarketplacePage({Key? key}) : super(key: key);
@@ -18,12 +19,38 @@ class _MarketplacePageState extends State<MarketplacePage> {
   List<dynamic> _kitchenwarePosts = [];
   final ApiService apiService = ApiService();
   Map<int, List<String>> postImages = {};
+  // final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  // Stopwatch _stopwatch = Stopwatch();
 
   @override
   void initState() {
     super.initState();
-    _fetchPosts(); // Fetch posts when the page loads
+    _fetchPosts();
+    //_startTimer();
   }
+
+  // @override
+  // void dispose() {
+  //   super.dispose();
+  //   _stopTimer();
+  // }
+  //
+  // Future<void> _startTimer() async {
+  //   _stopwatch.start();
+  // }
+  //
+  // Future<void> _stopTimer() async {
+  //   _stopwatch.stop();
+  //   final timeSpent = _stopwatch.elapsedMilliseconds;
+  //   // Log time spent on the page
+  //   await _analytics.logEvent(
+  //     name: 'page_view',
+  //     parameters: {
+  //       'page_name': 'Marketplace page',
+  //       'time_spent': timeSpent,
+  //     },
+  //   );
+  // }
 
   Future<String?> getToken() async {
     try {
@@ -111,6 +138,12 @@ class _MarketplacePageState extends State<MarketplacePage> {
           IconButton(
             icon: const Icon(Icons.message, color: Color(0xFF8EACCD)), // Message icon color
             onPressed: () {
+              // _analytics.logEvent(
+              //   name: 'button_click',
+              //   parameters: {
+              //     'button_name': 'message_button',
+              //   },
+              // );
               Navigator.pushNamed(context, '/messages'); // Messaging Page
             },
           ),

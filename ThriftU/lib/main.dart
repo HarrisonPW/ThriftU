@@ -17,7 +17,7 @@ import 'profile_page.dart';
 import 'package:provider/provider.dart';
 import 'chat_provider.dart';
 
-void main() {
+void main() async {
   runApp(
     ChangeNotifierProvider(
       create: (context) => AuthProvider(),

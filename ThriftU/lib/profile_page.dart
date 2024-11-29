@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+//import 'package:firebase_analytics/firebase_analytics.dart';
 
 import 'api_service.dart';
 import 'item_details_page.dart';
@@ -26,6 +27,10 @@ class _ProfilePageState extends State<ProfilePage> {
   String? userName;
   String? userEmail;
   String? avatarUrl;
+  int _followingCount = 0;
+  int _followerCount = 0;
+  // final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  // Stopwatch _stopwatch = Stopwatch();
 
   @override
   void initState() {
@@ -33,7 +38,33 @@ class _ProfilePageState extends State<ProfilePage> {
     _fetchUserProfile();
     _fetchUserPosts();
     _fetchLikedPosts();
+    _fetchFollowingCount();
+    _fetchFollowerCount();
+    //_startTimer();
   }
+
+  @override
+  void dispose() {
+    super.dispose();
+   // _stopTimer();
+  }
+
+  // Future<void> _startTimer() async {
+  //   _stopwatch.start();
+  // }
+  //
+  // Future<void> _stopTimer() async {
+  //   _stopwatch.stop();
+  //   final timeSpent = _stopwatch.elapsedMilliseconds;
+  //   // Log time spent on the page
+  //   await _analytics.logEvent(
+  //     name: 'page_view',
+  //     parameters: {
+  //       'page_name': 'Marketplace page',
+  //       'time_spent': timeSpent,
+  //     },
+  //   );
+  // }
 
   Future<String?> getToken() async {
     try {
@@ -106,6 +137,46 @@ class _ProfilePageState extends State<ProfilePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching profile: $error')),
       );
+    }
+  }
+
+  Future<void> _fetchFollowingCount() async {
+    final token = await getToken();
+    if (token == null) {
+      return;
+    }
+
+    try {
+      final userProfile = await apiService.getUserProfile(token);
+      final userId = userProfile['user_id'];
+
+      // Fetch the following list using the user ID
+      final followingList = await apiService.getFollowing(token, userId);
+      setState(() {
+        _followingCount = followingList.length; // Update the following count
+      });
+    } catch (error) {
+      print('Failed to fetch following count: $error');
+    }
+  }
+
+  Future<void> _fetchFollowerCount() async {
+    final token = await getToken();
+    if (token == null) {
+      return;
+    }
+
+    try {
+      final userProfile = await apiService.getUserProfile(token);
+      final userId = userProfile['user_id'];
+
+      // Fetch followers list using the user ID
+      final followersList = await apiService.getFollowers(token, userId);
+      setState(() {
+        _followerCount = followersList.length; // Update the follower count
+      });
+    } catch (error) {
+      print('Failed to fetch followers count: $error');
     }
   }
 
@@ -232,10 +303,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Example data (replace with actual values from API or backend)
-    final int followersCount = 120;
-    final int followingCount = 75;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -281,14 +348,14 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Column(
                   children: [
-                    Text('$followersCount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('$_followerCount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const Text('Followers'),
                   ],
                 ),
                 const SizedBox(width: 50),
                 Column(
                   children: [
-                    Text('$followingCount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('$_followingCount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const Text('Following'),
                   ],
                 ),
@@ -354,46 +421,46 @@ class _ProfilePageState extends State<ProfilePage> {
                 onRefresh: () => _showListings ? _fetchUserPosts() : _fetchLikedPosts(),
                 child: _showListings && userPosts.isEmpty || !_showListings && likedPosts.isEmpty
                     ? Center(
-                  child: Text(
-                    "Nothing here, go find something you like!",
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                )
+                      child: Text(
+                        "Nothing here, go find something you like!",
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
+                    )
                     : ListView.builder(
-                  itemCount: _showListings ? userPosts.length : likedPosts.length,
-                  itemBuilder: (context, index) {
-                    final data = _showListings ? userPosts[index] : likedPosts[index];
-                    final postID = _showListings ? userPosts[index]['post_id'] : likedPosts[index]['post_id'];
-                    final imageUrls = _showListings ? postImages[postID] ?? [] : likedPostImages[postID] ?? [];
-                    final displayImage = imageUrls.isNotEmpty ? imageUrls[0] : 'https://via.placeholder.com/140';
+                    itemCount: _showListings ? userPosts.length : likedPosts.length,
+                    itemBuilder: (context, index) {
+                      final data = _showListings ? userPosts[index] : likedPosts[index];
+                      final postID = _showListings ? userPosts[index]['post_id'] : likedPosts[index]['post_id'];
+                      final imageUrls = _showListings ? postImages[postID] ?? [] : likedPostImages[postID] ?? [];
+                      final displayImage = imageUrls.isNotEmpty ? imageUrls[0] : 'https://via.placeholder.com/140';
 
-                    return Card(
-                      elevation: 4,
-                      margin: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            displayImage,
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
+                      return Card(
+                        elevation: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              displayImage,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            ),
                           ),
+                          title: Text(
+                            data["title"] ?? 'Untitled',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          trailing: Text(
+                            '\$${data["price"]?.toStringAsFixed(2) ?? '0.00'}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          onTap: () => _navigateToDetails(postID),
                         ),
-                        title: Text(
-                          data["title"] ?? 'Untitled',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        trailing: Text(
-                          '\$${data["price"]?.toStringAsFixed(2) ?? '0.00'}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        onTap: () => _navigateToDetails(postID),
-                      ),
-                    );
+                      );
                   },
                 ),
               ),

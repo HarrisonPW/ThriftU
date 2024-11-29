@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart'; // Import shared_pr
 import 'api_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+//import 'package:firebase_analytics/firebase_analytics.dart';
 
 class PostPage extends StatefulWidget {
   const PostPage({Key? key}) : super(key: key);
@@ -22,6 +23,14 @@ class _PostPageState extends State<PostPage> {
 
   final ImagePicker _picker = ImagePicker();
   List<File> _selectedImages = [];
+  // final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  // Stopwatch _stopwatch = Stopwatch();
+
+  @override
+  void initState() {
+    super.initState();
+    //_startTimer();
+  }
 
   @override
   void dispose() {
@@ -29,7 +38,25 @@ class _PostPageState extends State<PostPage> {
     _descriptionController.dispose();
     _priceController.dispose();
     super.dispose();
+    //_stopTimer();
   }
+
+  // Future<void> _startTimer() async {
+  //   _stopwatch.start();
+  // }
+  //
+  // Future<void> _stopTimer() async {
+  //   _stopwatch.stop();
+  //   final timeSpent = _stopwatch.elapsedMilliseconds;
+  //   // Log time spent on the page
+  //   await _analytics.logEvent(
+  //     name: 'page_view',
+  //     parameters: {
+  //       'page_name': 'Post page',
+  //       'time_spent': timeSpent,
+  //     },
+  //   );
+  // }
 
   Future<String?> getToken() async {
     try {
@@ -166,6 +193,12 @@ class _PostPageState extends State<PostPage> {
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.red),
                         onPressed: () {
+                          // _analytics.logEvent(
+                          //   name: 'button_click',
+                          //   parameters: {
+                          //     'button_name': 'remove_image_button',
+                          //   },
+                          // );
                           setState(() {
                             _selectedImages.remove(image);
                           });
@@ -176,22 +209,38 @@ class _PostPageState extends State<PostPage> {
                 }).toList(),
               )
                   : Container(
-                height: 100,
-                color: Colors.grey[300],
-                child: const Center(
-                  child: Text('No images selected'),
-                ),
-              ),
+                    height: 100,
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: Text('No images selected'),
+                    ),
+                  ),
               const SizedBox(height: 10),
               Row(
                 children: [
                   ElevatedButton(
-                    onPressed: () => _pickImage(ImageSource.gallery),
+                    onPressed: () {
+                      // _analytics.logEvent(
+                      //   name: 'button_click',
+                      //   parameters: {
+                      //     'button_name': 'selectImage_button',
+                      //   },
+                      // );
+                      _pickImage(ImageSource.gallery);
+                    },
                     child: const Text('Select from Gallery'),
                   ),
                   const SizedBox(width: 10),
                   ElevatedButton(
-                    onPressed: () => _pickImage(ImageSource.camera),
+                    onPressed: () {
+                      // _analytics.logEvent(
+                      //   name: 'button_click',
+                      //   parameters: {
+                      //     'button_name': 'takeImage_button',
+                      //   },
+                      // );
+                      _pickImage(ImageSource.camera);
+                    },
                     child: const Text('Take Photo'),
                   ),
                 ],
@@ -248,7 +297,15 @@ class _PostPageState extends State<PostPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _createPost, // Call the function to create a post
+                  onPressed: () {
+                    // _analytics.logEvent(
+                    //   name: 'button_click',
+                    //   parameters: {
+                    //     'button_name': 'post_button',
+                    //   },
+                    // );
+                    _createPost();
+                  }, // Call the function to create a post
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.all(16),
                     backgroundColor: Colors.blue[300],

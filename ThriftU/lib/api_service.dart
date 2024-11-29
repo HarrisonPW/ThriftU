@@ -153,16 +153,14 @@ class ApiService {
     if (response.statusCode == 200) {
       try {
         final responseData = jsonDecode(response.body);
-        print("Decoded response: $responseData"); // Debug: Decoded JSON
-
-        // Ensure 'messages' key is present and properly formatted
+        print("Decoded response: $responseData");
         if (responseData['messages'] == null) {
           throw Exception("Missing 'messages' key in response");
         }
 
         return List<Map<String, dynamic>>.from(responseData['messages']);
       } catch (e) {
-        print("JSON decoding error: $e"); // Debug: JSON decoding error
+        print("JSON decoding error: $e");
         throw Exception('Invalid JSON response: $e');
       }
     } else {
@@ -402,7 +400,131 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> fetchNotifications(String token, List<int> userPostIds) async {
+    final List<Map<String, dynamic>> notifications = [];
 
+    try {
+      // Fetch messages
+      final messages = await ApiService.fetchMessages(token);
+      for (var message in messages) {
+        notifications.add({
+          'id': message['message_id'],
+          'type': 'Message',
+          'content': 'New message from ${message['sender']}',
+          'timestamp': message['timestamp'],
+          'is_read': message['is_read'] ?? false,
+        });
+      }
+
+      // Fetch replies for each post owned by the user
+      for (var postId in userPostIds) {
+        final replies = await getPostReplies(token, postId);
+        for (var reply in replies) {
+          notifications.add({
+            'id': reply['reply_id'],
+            'type': 'Reply',
+            'content': 'New reply to your post: "${reply['content']}"',
+            'timestamp': reply['timestamp'],
+            'is_read': reply['is_read'] ?? false,
+          });
+        }
+      }
+
+      return notifications;
+    } catch (e) {
+      throw Exception('Error fetching notifications: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getUserProfileById(String token, int userId) async {
+    final url = Uri.parse('$baseUrl/user/profile/$userId');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Map<String, dynamic>.from(data);
+    } else if (response.statusCode == 404) {
+      throw Exception('User not found: ${response.body}');
+    } else {
+      throw Exception('Failed to fetch user profile: ${response.body}');
+    }
+  }
+
+  Future<void> followUser(String token, int userId) async {
+    final url = Uri.parse('$baseUrl/follow');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'following_id': userId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to follow user: ${response.body}');
+    }
+  }
+
+  Future<void> unfollowUser(String token, int userId) async {
+    final url = Uri.parse('$baseUrl/unfollow');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'following_id': userId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to unfollow user: ${response.body}');
+    }
+  }
+
+  Future<List<int>> getFollowing(String token, int userId) async {
+    final url = Uri.parse('$baseUrl/following/$userId');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final followingList = List<Map<String, dynamic>>.from(data['following']);
+      return followingList.map((user) => user['user_id'] as int).toList();
+    } else {
+      throw Exception('Failed to fetch following list: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getFollowers(String token, int userId) async {
+    final url = Uri.parse('$baseUrl/followers/$userId');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final followersList = List<Map<String, dynamic>>.from(data['followers']);
+      return followersList;
+    } else {
+      throw Exception('Failed to fetch followers: ${response.body}');
+    }
+  }
 
 // Add more methods for other endpoints (e.g., activate_user)
 }
