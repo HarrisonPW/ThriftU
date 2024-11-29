@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'bottom_navigation_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'api_service.dart';
+import 'plaza_details_page.dart';
+import 'plaza_post.dart';
 
 class PlazaPage extends StatefulWidget {
   const PlazaPage({Key? key}) : super(key: key);
@@ -9,189 +12,215 @@ class PlazaPage extends StatefulWidget {
 }
 
 class _PlazaPageState extends State<PlazaPage> {
-  int _currentIndex = 1; // Set current index to Plaza
+  final ApiService apiService = ApiService();
+  List<dynamic> _allPosts = [];
+  List<dynamic> _filteredPosts = [];
+  Map<int, List<String>> postImages = {};
+  String _selectedCategory = 'All';
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _currentIndex = index; // Update the current index
-    });
+  @override
+  void initState() {
+    super.initState();
+    _fetchPosts(); // Fetch posts when the page loads
+  }
 
-    // Navigate to the appropriate page based on the tapped index
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, '/marketplace');
-        break;
-      case 1:
-      // Plaza Page (already here)
-        break;
-      case 2:
-        Navigator.pushReplacementNamed(context, '/post');
-        break;
-      case 3:
-        Navigator.pushReplacementNamed(context, '/notifications');
-        break;
-      case 4:
-        Navigator.pushReplacementNamed(context, '/profile');
-        break;
+  Future<String?> getToken() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      print('Error fetching token: $e');
+      return null;
     }
   }
 
-  void _navigateToPage(String route) {
-    Navigator.pushNamed(context, route);
+  Future<void> _fetchPosts() async {
+    final token = await getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
+      return;
+    }
+
+    try {
+      final posts = await apiService.getAllPosts(token);
+
+      setState(() {
+        _allPosts = posts.where((post) => ['sublease', 'restaurant', 'event'].contains(post['post_type'])).toList();
+        _filteredPosts = _allPosts; // Initially show all posts
+      });
+
+      for (var post in _allPosts) {
+        if (post['files'] != null && post['files'].isNotEmpty) {
+          List<String> imageUrls = [];
+          for (var fileId in post['files']) {
+            final imageUrl = await apiService.getFileUrl(fileId, token);
+            imageUrls.add(imageUrl);
+          }
+          postImages[post['post_id']] = imageUrls; // Store list of image URLs in the map
+        } else {
+          postImages[post['post_id']] = []; // No images if there are no file_ids
+        }
+      }
+
+      setState(() {});
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching posts: $error')),
+      );
+    }
+  }
+
+  void _filterPosts(String category) {
+    setState(() {
+      _selectedCategory = category;
+      if (category == 'All') {
+        _filteredPosts = _allPosts;
+      } else {
+        _filteredPosts = _allPosts.where((post) => post['post_type'] == category.toLowerCase()).toList();
+      }
+    });
+  }
+
+  Future<void> _navigateToDetails(int postId) async {
+    final token = await getToken();
+    if (token != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PlazaDetailsPage(
+            postId: postId,
+            token: token,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Plaza'),
+        title: const Text(
+          'Plaza',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         backgroundColor: const Color(0xFFFFFF), // Set AppBar color
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: _filterPosts,
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'All', child: Text('All')),
+              const PopupMenuItem(value: 'Sublease', child: Text('Sublease')),
+              const PopupMenuItem(value: 'Restaurant', child: Text('Restaurant')),
+              const PopupMenuItem(value: 'Event', child: Text('Event')),
+            ],
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
+        child: RefreshIndicator(
+          onRefresh: _fetchPosts,
+          child: _buildPlazaBody(),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final token = await getToken();
+          if (token != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PlazaPostPage(
+                  token: token,
+                  categories: ['sublease', 'restaurant', 'event'],
+                  onPostCreated: _fetchPosts,
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Token is missing, please log in again')),
+            );
+          }
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildPlazaBody() {
+    return _filteredPosts.isEmpty
+        ? const Center(child: Text('No posts available.'))
+        : ListView.builder(
+      itemCount: _filteredPosts.length,
+      itemBuilder: (context, index) {
+        final post = _filteredPosts[index];
+        final postId = post['post_id'];
+        final imageUrls = postImages[postId] ?? [];
+
+        return _buildPostItem(
+          name: post['title'] ?? 'Untitled',
+          description: post['description'] ?? '',
+          imageUrls: imageUrls.isNotEmpty ? imageUrls : ['https://via.placeholder.com/140'],
+          postId: postId,
+        );
+      },
+    );
+  }
+
+  Widget _buildPostItem({
+    required String name,
+    required String description,
+    required List<String> imageUrls,
+    required int postId,
+  }) {
+    return GestureDetector(
+      onTap: () => _navigateToDetails(postId),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Search Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search',
-                  border: InputBorder.none,
-                  icon: Icon(Icons.search, color: Colors.grey),
+            if (imageUrls.isNotEmpty)
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                ),
+                child: Image.network(
+                  imageUrls[0],
+                  height: 200.0,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // First Image Button
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _navigateToPage('/sublease'),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: ColorFiltered(
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.45),
-                          BlendMode.darken,
-                        ),
-                        child: Container(
-                          height: 150,
-                          decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage('assets/images/sublease.jpeg'), // Image path
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 18.0,
+                      fontWeight: FontWeight.bold,
                     ),
-                    Center(
-                      child: Text(
-                        'Sublease',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          shadows: [Shadow(blurRadius: 5.0, color: Colors.black)],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(description),
+                ],
               ),
             ),
-
-            // Second Image Button
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _navigateToPage('/events'),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: ColorFiltered(
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.45),
-                          BlendMode.darken,
-                        ),
-                        child: Container(
-                          height: 150,
-                          decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage('assets/images/events.jpeg'), // Image path
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Text(
-                        'Events',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          shadows: [Shadow(blurRadius: 5.0, color: Colors.black)],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Third Image Button
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _navigateToPage('/restaurants'),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: ColorFiltered(
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.45),
-                          BlendMode.darken,
-                        ),
-                        child: Container(
-                          height: 150,
-                          decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage('assets/images/restaurants.jpeg'), // Image path
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Text(
-                        'Restaurants',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          shadows: [Shadow(blurRadius: 5.0, color: Colors.black)],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
