@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Import shared_preferences for token storage
+import 'package:thriftu/utils/ClickCountProvider.dart';
 import 'api_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -199,6 +201,7 @@ class _PostPageState extends State<PostPage> {
                           //     'button_name': 'remove_image_button',
                           //   },
                           // );
+                          Provider.of<ClickCountProvider>(context, listen: false).incrementClickCount('remove_image_button');
                           setState(() {
                             _selectedImages.remove(image);
                           });
@@ -226,6 +229,7 @@ class _PostPageState extends State<PostPage> {
                       //     'button_name': 'selectImage_button',
                       //   },
                       // );
+                      Provider.of<ClickCountProvider>(context, listen: false).incrementClickCount('select_image_button');
                       _pickImage(ImageSource.gallery);
                     },
                     child: const Text('Select from Gallery'),
@@ -239,6 +243,7 @@ class _PostPageState extends State<PostPage> {
                       //     'button_name': 'takeImage_button',
                       //   },
                       // );
+                      Provider.of<ClickCountProvider>(context, listen: false).incrementClickCount('take_image_button');
                       _pickImage(ImageSource.camera);
                     },
                     child: const Text('Take Photo'),
@@ -304,6 +309,7 @@ class _PostPageState extends State<PostPage> {
                     //     'button_name': 'post_button',
                     //   },
                     // );
+                    Provider.of<ClickCountProvider>(context, listen: false).incrementClickCount('post_button');
                     _createPost();
                   }, // Call the function to create a post
                   style: ElevatedButton.styleFrom(

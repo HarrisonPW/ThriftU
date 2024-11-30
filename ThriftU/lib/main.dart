@@ -6,21 +6,24 @@ import 'package:thriftu/restaurants.dart';
 import 'package:thriftu/sublease.dart';
 import 'package:thriftu/activation_page.dart';
 import 'package:thriftu/messages_page.dart';
+import 'package:thriftu/utils/ClickCountProvider.dart';
 import 'auth_provider.dart';
 import 'login_page.dart';
 import 'signup_page.dart';
 import 'marketplace_page.dart';
 import 'plaza_page.dart';
-import 'activation_page.dart';
 import 'profile_page.dart';
 
 import 'package:provider/provider.dart';
-import 'chat_provider.dart';
+
 
 void main() async {
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => AuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => AuthProvider()),
+        ChangeNotifierProvider(create: (context) => ClickCountProvider()),
+      ],
       child: const MyApp(),
     ),
   );

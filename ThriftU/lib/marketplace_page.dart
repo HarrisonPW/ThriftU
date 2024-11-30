@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:thriftu/utils/ClickCountProvider.dart';
 import 'api_service.dart';
 import 'item_details_page.dart';
 //import 'package:firebase_analytics/firebase_analytics.dart';
@@ -169,6 +171,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
               //     'button_name': 'message_button',
               //   },
               // );
+              Provider.of<ClickCountProvider>(context, listen: false).incrementClickCount('message_button');
               Navigator.pushNamed(context, '/messages'); // Messaging Page
             },
           ),
