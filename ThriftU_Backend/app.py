@@ -78,6 +78,9 @@ def register():
     password = data.get('password')
     username = data.get('username')
 
+    if not re.match(r'^[^@]+@gatech\.edu$', email):
+        return jsonify({"error": "Email must end with @gatech.edu"}), 400
+
     if not email or not password or not username:
         return jsonify({'error': 'Email, password, and username are required'}), 400
 
