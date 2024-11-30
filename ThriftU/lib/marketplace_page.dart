@@ -19,6 +19,12 @@ class _MarketplacePageState extends State<MarketplacePage> {
   List<dynamic> _kitchenwarePosts = [];
   final ApiService apiService = ApiService();
   Map<int, List<String>> postImages = {};
+  List<dynamic> _electronicsPosts = [];
+  List<dynamic> _miscellaneousPosts = [];
+  List<dynamic> _sportsPosts = [];
+  String _searchQuery = '';
+  List<dynamic> _allPosts = [];
+  final TextEditingController _searchController = TextEditingController();
   // final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   // Stopwatch _stopwatch = Stopwatch();
 
@@ -27,6 +33,12 @@ class _MarketplacePageState extends State<MarketplacePage> {
     super.initState();
     _fetchPosts();
     //_startTimer();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   // @override
@@ -75,9 +87,13 @@ class _MarketplacePageState extends State<MarketplacePage> {
       final posts = await apiService.getAllPosts(token);
 
       setState(() {
+        _allPosts = posts;
         _furniturePosts = posts.where((post) => post['post_type'] == 'Furniture').toList();
         _clothesPosts = posts.where((post) => post['post_type'] == 'Clothes').toList();
         _kitchenwarePosts = posts.where((post) => post['post_type'] == 'Kitchenware').toList();
+        _electronicsPosts = posts.where((post) => post['post_type'] == 'Electronics').toList();
+        _miscellaneousPosts = posts.where((post) => post['post_type'] == 'Miscellaneous').toList();
+        _sportsPosts = posts.where((post) => post['post_type'] == 'Sports').toList();
       });
 
       for (var post in posts) {
@@ -101,6 +117,15 @@ class _MarketplacePageState extends State<MarketplacePage> {
         SnackBar(content: Text('Error fetching posts: $error')),
       );
     }
+  }
+
+  List<dynamic> _filterPostsBySearchQuery(List<dynamic> posts) {
+    if (_searchQuery.isEmpty) return posts;
+
+    return posts.where((post) {
+      final title = post['title']?.toLowerCase() ?? '';
+      return title.contains(_searchQuery);
+    }).toList();
   }
 
   Future<void> _navigateToDetails(int postId) async {
@@ -160,7 +185,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
   }
 
   Widget _buildMarketplaceBody() {
-    return ListView(
+    final filteredPosts = _filterPostsBySearchQuery(_allPosts); // Filter all posts
+
+    return Column(
       children: [
         // Search bar
         Container(
@@ -170,27 +197,89 @@ class _MarketplacePageState extends State<MarketplacePage> {
             color: Colors.grey[200],
             borderRadius: BorderRadius.circular(10.0),
           ),
-          child: const TextField(
+          child: TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value.toLowerCase(); // Update query for case-insensitive search
+              });
+            },
             decoration: InputDecoration(
               hintText: 'Search',
               border: InputBorder.none,
-              prefixIcon: Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      setState(() {
+                        _searchQuery = '';
+                        _searchController.clear();
+                      });
+                    },
+                  )
+                  : null,
             ),
           ),
         ),
-        _buildCategorySection(
-          title: 'Furniture',
-          posts: _furniturePosts,
-        ),
-        const SizedBox(height: 16.0),
-        _buildCategorySection(
-          title: 'Clothes',
-          posts: _clothesPosts,
-        ),
-        const SizedBox(height: 16.0),
-        _buildCategorySection(
-          title: 'Kitchenware',
-          posts: _kitchenwarePosts,
+        // Show results or default view
+        Expanded(
+          child: _searchQuery.isNotEmpty
+              ? (filteredPosts.isEmpty
+              ? const Center(
+            child: Text('No items match your search.'),
+          )
+              : ListView.builder(
+            padding: const EdgeInsets.all(16.0),
+            itemCount: filteredPosts.length,
+            itemBuilder: (context, index) {
+              final post = filteredPosts[index];
+              final postId = post['post_id'];
+              final imageUrls = postImages[postId] ?? [];
+
+              return _buildItem(
+                name: post['title'],
+                imageUrls: imageUrls.isNotEmpty
+                    ? imageUrls
+                    : ['https://via.placeholder.com/140'],
+                price: post['price'],
+                postId: postId,
+              );
+            },
+          ))
+              : ListView(
+              children: [
+                _buildCategorySection(
+                  title: 'Furniture',
+                  posts: _furniturePosts,
+                ),
+                const SizedBox(height: 16.0),
+                _buildCategorySection(
+                  title: 'Clothes',
+                  posts: _clothesPosts,
+                ),
+                const SizedBox(height: 16.0),
+                _buildCategorySection(
+                  title: 'Kitchenware',
+                  posts: _kitchenwarePosts,
+                ),
+                const SizedBox(height: 16.0),
+                _buildCategorySection(
+                  title: 'Electronics',
+                  posts: _electronicsPosts,
+                ),
+                const SizedBox(height: 16.0),
+                _buildCategorySection(
+                  title: 'Miscellaneous',
+                  posts: _miscellaneousPosts,
+                ),
+                const SizedBox(height: 16.0),
+                _buildCategorySection(
+                  title: 'Sports',
+                  posts: _sportsPosts,
+                ),
+              ],
+          ),
         ),
       ],
     );
@@ -239,9 +328,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 price: post['price'],
                 postId: postId,
               );
-            },
-          ),
-        ),
+                },
+              ),
+            ),
       ],
     );
   }
