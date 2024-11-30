@@ -19,7 +19,7 @@ class _PostPageState extends State<PostPage> {
   TextEditingController _descriptionController = TextEditingController();
   TextEditingController _priceController = TextEditingController();
   String _selectedCategory = 'Furniture'; // Default category
-  final List<String> _categories = ['Furniture', 'Clothes', 'Kitchenware']; // Add more categories as needed
+  final List<String> _categories = ['Furniture', 'Clothes', 'Kitchenware', 'Electronics', 'Miscellaneous', 'Sports']; // Add more categories as needed
 
   final ApiService _apiService = ApiService(); // Create an instance of ApiService
 
