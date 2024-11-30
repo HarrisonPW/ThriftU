@@ -108,39 +108,39 @@ class _NotificationPageState extends State<NotificationPage> {
         onRefresh: _fetchNotifications,
         child: notifications.isEmpty
             ? const Center(
-          child: Text('No notifications available.'),
-        )
+              child: Text('No notifications available.'),
+            )
             : ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: notifications.length,
-          itemBuilder: (context, index) {
-            final notification = notifications[index];
-            return Card(
-              margin: const EdgeInsets.symmetric(vertical: 8.0),
-              child: ListTile(
-                leading: Icon(
-                  notification['type'] == 'Message'
-                      ? Icons.message
-                      : Icons.reply,
-                  color: notification['is_read'] ? Colors.grey : Colors.blueAccent,
-                  size: 30,
-                ),
-                title: Text(
-                  notification['content'],
-                  style: TextStyle(
-                    fontWeight: notification['is_read'] ? FontWeight.normal : FontWeight.bold,
+              padding: const EdgeInsets.all(16.0),
+              itemCount: notifications.length,
+              itemBuilder: (context, index) {
+                final notification = notifications[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: ListTile(
+                    leading: Icon(
+                      notification['type'] == 'Message'
+                          ? Icons.message
+                          : Icons.reply,
+                      color: notification['is_read'] ? Colors.grey : Colors.blueAccent,
+                      size: 30,
+                    ),
+                    title: Text(
+                      notification['content'] ?? 'No content',
+                      style: TextStyle(
+                        fontWeight: notification['is_read'] ? FontWeight.normal : FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(notification['timestamp'] ?? 'Unknown time'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _deleteNotification(notification['id']),
+                    ),
+                    onTap: () => _markAsRead(notification['id']),
                   ),
-                ),
-                subtitle: Text(notification['timestamp']),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _deleteNotification(notification['id']),
-                ),
-                onTap: () => _markAsRead(notification['id']),
-              ),
-            );
-          },
-        ),
+                );
+              }
+            ),
       ),
     );
   }

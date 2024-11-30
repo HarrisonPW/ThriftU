@@ -404,28 +404,26 @@ class ApiService {
     final List<Map<String, dynamic>> notifications = [];
 
     try {
-      // Fetch messages
       final messages = await ApiService.fetchMessages(token);
       for (var message in messages) {
         notifications.add({
-          'id': message['message_id'],
+          'id': message['msg_id'],
           'type': 'Message',
-          'content': 'New message from ${message['sender']}',
-          'timestamp': message['timestamp'],
-          'is_read': message['is_read'] ?? false,
+          'content': 'New message from ${message['from_user_email']}',
+          'timestamp': message['create_time'],
+          'is_read': false,
         });
       }
 
-      // Fetch replies for each post owned by the user
       for (var postId in userPostIds) {
         final replies = await getPostReplies(token, postId);
         for (var reply in replies) {
           notifications.add({
             'id': reply['reply_id'],
             'type': 'Reply',
-            'content': 'New reply to your post: "${reply['content']}"',
-            'timestamp': reply['timestamp'],
-            'is_read': reply['is_read'] ?? false,
+            'content': 'New reply to your post: "${reply['reply_text']}"',
+            'timestamp': reply['create_time'],
+            'is_read': false,
           });
         }
       }
