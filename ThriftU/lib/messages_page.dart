@@ -6,6 +6,12 @@ import 'package:provider/provider.dart';
 import 'chat_provider.dart';
 import 'chat_page.dart';
 
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'search_user_page.dart';
+import 'chat_page.dart';
+import 'api_service.dart';
+
 class MessagesPage extends StatefulWidget {
   const MessagesPage({Key? key}) : super(key: key);
 
@@ -15,12 +21,14 @@ class MessagesPage extends StatefulWidget {
 
 class _MessagesPageState extends State<MessagesPage> {
   String? token;
+  int? currentUserId;
   Future<List<Map<String, dynamic>>>? _chats;
 
   Future<void> _initialize() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       token = prefs.getString('auth_token');
+      currentUserId = prefs.getInt('user_id'); // Assuming the user ID is stored here
     });
 
     if (token != null) {
@@ -71,41 +79,40 @@ class _MessagesPageState extends State<MessagesPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('No messages found.'),
+                  const Text(
+                    'No messages found.',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       if (token != null) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                SearchUserPage(token: token!),
+                            builder: (context) => SearchUserPage(token: token!),
                           ),
                         );
                       }
                     },
-                    child: const Text('Start a Chat'),
+                    child: const Text('Search for a User'),
                   ),
                 ],
               ),
             );
           }
 
-          final messages = snapshot.data!;
-          // Group messages by user
-          final Map<int, Map<String, dynamic>> groupedMessages = {};
-          for (var message in messages) {
-            final int? fromUserId = message['from_user_id'];
-            final int? toUserId = message['to_user_id'];
+          // Group messages by "to user ID"
+          final groupedMessages = <int, Map<String, dynamic>>{};
+          for (var message in snapshot.data!) {
+            final toUserId = message['to_user_id'];
+            final fromUserId = message['from_user_id'];
 
-            // Determine the userId to group messages by
-            final int userId = (fromUserId == message['to_user_id'])
-                ? fromUserId!
-                : (toUserId != null ? toUserId : fromUserId!);
+            // Ensure the chat displays the "other user"
+            final otherUserId = currentUserId == fromUserId ? toUserId : fromUserId;
 
-            // Add to grouped messages if not already added
-            if (!groupedMessages.containsKey(userId)) {
-              groupedMessages[userId] = message; // Use the first message from/to this user
+            if (!groupedMessages.containsKey(otherUserId)) {
+              groupedMessages[otherUserId] = message;
             }
           }
 
@@ -114,31 +121,33 @@ class _MessagesPageState extends State<MessagesPage> {
           return ListView.builder(
             itemCount: uniqueChats.length,
             itemBuilder: (context, index) {
-              final chat = uniqueChats[index];
-              final int chatUserId = chat['to_user_id'] != chat['from_user_id']
-                  ? (chat['to_user_id'] ?? chat['from_user_id'])
-                  : chat['from_user_id'];
-              final email = chat['to_user_email'] ?? chat['from_user_email'] ?? 'Unknown';
+              final message = uniqueChats[index];
+              final toUserId = message['to_user_id'];
+              final fromUserId = message['from_user_id'];
+
+              // Determine the other user's ID and email
+              final otherUserId = currentUserId == fromUserId ? toUserId : fromUserId;
+              final otherUserEmail = currentUserId == fromUserId
+                  ? message['to_user_email']
+                  : message['from_user_email'];
 
               return ListTile(
-                title: Text('Chat with $email'),
-                subtitle: Text(chat['text'] ?? 'No message'),
+                title: Text('Chat with $toUserId'),
+                subtitle: Text(message['text'] ?? 'No message'),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => ChangeNotifierProvider(
-                        create: (_) => ChatProvider(
-                          token: token!,
-                          contactUserId: chatUserId,
-                        ),
+                        create: (_) => ChatProvider(contactUserId: toUserId, token: token!), // Pass required values
                         child: ChatPage(
-                          userId: chatUserId,
+                          userId: toUserId,
                           token: token!,
                         ),
                       ),
                     ),
                   );
+
                 },
               );
             },
