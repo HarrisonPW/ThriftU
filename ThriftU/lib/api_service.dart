@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart';
+import 'package:geolocator/geolocator.dart';
+
 
 class ApiService {
   static const String baseUrl = 'http://34.44.172.61';
@@ -521,6 +523,42 @@ class ApiService {
       return followersList;
     } else {
       throw Exception('Failed to fetch followers: ${response.body}');
+    }
+  }
+  Future<Position> getUserLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception("Location services are disabled.");
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception("Location permission denied.");
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception(
+          "Location permissions are permanently denied. Enable permissions in settings.");
+    }
+
+    return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+  }
+
+
+  Future<Map<String, dynamic>> getWeather(double latitude, double longitude) async {
+    const apiKey = "XXXXXXXXXXXXXX";
+    final url =
+        "https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=$apiKey";
+
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception("Failed to load weather data");
     }
   }
 

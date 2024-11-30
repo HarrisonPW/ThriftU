@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -15,6 +17,9 @@ class MarketplacePage extends StatefulWidget {
 }
 
 class _MarketplacePageState extends State<MarketplacePage> {
+  String weatherInfo = "Fetching weather...";
+  Map<String, dynamic> weatherData = {};
+  bool showWeather = true;
   int _currentIndex = 0;
   List<dynamic> _furniturePosts = [];
   List<dynamic> _clothesPosts = [];
@@ -34,7 +39,15 @@ class _MarketplacePageState extends State<MarketplacePage> {
   void initState() {
     super.initState();
     _fetchPosts();
+    _fetchWeather();
     //_startTimer();
+    Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          showWeather = false;
+        });
+      }
+    });
   }
 
   @override
@@ -84,6 +97,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
       );
       return;
     }
+
 
     try {
       final posts = await apiService.getAllPosts(token);
@@ -148,17 +162,45 @@ class _MarketplacePageState extends State<MarketplacePage> {
       );
     }
   }
+  Future<void> _fetchWeather() async {
+    try {
+      final location = await apiService.getUserLocation();
+      final weather = await apiService.getWeather(location.latitude, location.longitude);
+      setState(() {
+        weatherData = weather;
+        weatherInfo = "Weather data fetched";
+      });
+    } catch (e) {
+      setState(() {
+        weatherInfo = "Error: $e";
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Marketplace',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+        title: Row(
+          children: [
+            // Weather main text
+            if (weatherData.isNotEmpty && weatherData['weather'] != null && weatherData['weather'].isNotEmpty)
+              Text(
+                '${weatherData['weather'][0]['main']} | ',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF8EACCD),
+                ),
+              ),
+            // Marketplace title
+            const Text(
+              'Marketplace',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          ],
         ),
         backgroundColor: const Color(0xFFFFFF), // Set AppBar color
         actions: [
@@ -186,6 +228,113 @@ class _MarketplacePageState extends State<MarketplacePage> {
       ),
     );
   }
+  Widget _buildWeatherDisplay(Map<String, dynamic>? weatherData) {
+    if (weatherData == null || weatherData['main'] == null) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    final mainData = weatherData['main'];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Current Weather',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Temperature Range: ${(mainData['temp_min'] - 273.15).toStringAsFixed(1)}°C - ${(mainData['temp_max'] - 273.15).toStringAsFixed(1)}°C',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 8.0,
+            children: [
+              _buildWeatherDetail(
+                'Temperature',
+                '${(mainData['temp'] - 273.15).toStringAsFixed(1)}°C',
+              ),
+              _buildWeatherDetail(
+                'Feels Like',
+                '${(mainData['feels_like'] - 273.15).toStringAsFixed(1)}°C',
+              ),
+              _buildWeatherDetail(
+                'Humidity',
+                '${mainData['humidity']}%',
+              ),
+              _buildWeatherDetail(
+                'Pressure',
+                '${mainData['pressure']} hPa',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeatherDetail(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildMarketplaceBody() {
     final filteredPosts = _filterPostsBySearchQuery(_allPosts); // Filter all posts
@@ -193,6 +342,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
     return Column(
       children: [
         // Search bar
+        if (weatherData.isNotEmpty && showWeather) _buildWeatherDisplay(weatherData),
         Container(
           margin: const EdgeInsets.only(bottom: 16.0),
           padding: const EdgeInsets.symmetric(horizontal: 12.0),
