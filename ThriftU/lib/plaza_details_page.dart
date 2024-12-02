@@ -96,66 +96,79 @@ class _ItemDetailsPageState extends State<PlazaDetailsPage> {
       appBar: AppBar(
         title: const Text('Post Details'),
       ),
-      body: _postDetails == null
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: _postDetails == null
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Display item details
-            Text(
-              _postDetails!['title'],
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text('Posted by: ${_postDetails!['user_email']}'),
-            const SizedBox(height: 10),
-            const SizedBox(height: 10),
-
-            // Display post images
-            if (_postDetails!['files'] != null)
-              SizedBox(
-                height: 180,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _postDetails!['files'].length,
-                  itemBuilder: (context, index) {
-                    final imageUrl = _postDetails!['files'][index];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Image.network(imageUrl, fit: BoxFit.cover),
-                    );
-                  },
+            // Scrollable Content
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        _postDetails!['title'],
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      // User Email
+                      Text('Posted by: ${_postDetails!['user_email']}'),
+                      const SizedBox(height: 10),
+                      // Post Images
+                      if (_postDetails!['files'] != null)
+                        SizedBox(
+                          height: 180,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _postDetails!['files'].length,
+                            itemBuilder: (context, index) {
+                              final imageUrl = _postDetails!['files'][index];
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: Image.network(imageUrl, fit: BoxFit.cover),
+                              );
+                            },
+                          ),
+                        ),
+                      const SizedBox(height: 20),
+                      // Description
+                      Text(
+                        'Description: ${_postDetails!['description']}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+                      // Like Section
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              _isLiked ? Icons.favorite : Icons.favorite_border,
+                              color: Colors.red,
+                            ),
+                            onPressed: _toggleLike,
+                          ),
+                          Text('$_likeCount likes'),
+                        ],
+                      ),
+                      const Divider(),
+                      // Comments Header
+                      const Text(
+                        'Comments',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-
-            const SizedBox(height: 20),
-            Text('Description: ${_postDetails!['description']}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-
-            // Like and comment section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: Colors.red,
-                  ),
-                  onPressed: _toggleLike,
-                ),
-                Text('$_likeCount likes'),
-              ],
             ),
-            const Divider(),
-
-            // Comments section
-            const Text(
-              'Comments',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            // Comments Section
             Expanded(
               child: ListView.builder(
                 itemCount: _replies.length,
@@ -169,8 +182,7 @@ class _ItemDetailsPageState extends State<PlazaDetailsPage> {
               ),
             ),
             const Divider(),
-
-            // Reply input field
+            // Comment Input Field
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Row(
