@@ -179,51 +179,56 @@ class _MarketplacePageState extends State<MarketplacePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            // Weather main text
-            if (weatherData.isNotEmpty && weatherData['weather'] != null && weatherData['weather'].isNotEmpty)
-              Text(
-                '${weatherData['weather'][0]['main']} | ',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF8EACCD),
+    return GestureDetector(
+        onTap: () {
+      FocusScope.of(context).unfocus();
+    },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Row(
+            children: [
+              // Weather main text
+              if (weatherData.isNotEmpty && weatherData['weather'] != null && weatherData['weather'].isNotEmpty)
+                Text(
+                  '${weatherData['weather'][0]['main']} | ',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF8EACCD),
+                  ),
+                ),
+              // Marketplace title
+              const Text(
+                'Marketplace',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
                 ),
               ),
-            // Marketplace title
-            const Text(
-              'Marketplace',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFFFFF), // Set AppBar color
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.message, color: Color(0xFF8EACCD)), // Message icon color
+              onPressed: () {
+                // _analytics.logEvent(
+                //   name: 'button_click',
+                //   parameters: {
+                //     'button_name': 'message_button',
+                //   },
+                // );
+                Provider.of<ClickCountProvider>(context, listen: false).incrementClickCount('message_button');
+                Navigator.pushNamed(context, '/messages'); // Messaging Page
+              },
             ),
           ],
         ),
-        backgroundColor: const Color(0xFFFFFF), // Set AppBar color
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.message, color: Color(0xFF8EACCD)), // Message icon color
-            onPressed: () {
-              // _analytics.logEvent(
-              //   name: 'button_click',
-              //   parameters: {
-              //     'button_name': 'message_button',
-              //   },
-              // );
-              Provider.of<ClickCountProvider>(context, listen: false).incrementClickCount('message_button');
-              Navigator.pushNamed(context, '/messages'); // Messaging Page
-            },
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: RefreshIndicator(
+            onRefresh: _fetchPosts,
+            child: _buildMarketplaceBody(),
           ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: RefreshIndicator(
-          onRefresh: _fetchPosts,
-          child: _buildMarketplaceBody(),
         ),
       ),
     );
