@@ -108,12 +108,9 @@ class _PlazaPageState extends State<PlazaPage> {
       appBar: AppBar(
         title: const Text(
           'Plaza',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
-        backgroundColor: const Color(0xFFFFFF), // Set AppBar color
+        backgroundColor: const Color(0xFFFFFF),
         actions: [
           PopupMenuButton<String>(
             onSelected: _filterPosts,
@@ -126,34 +123,41 @@ class _PlazaPageState extends State<PlazaPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: RefreshIndicator(
-          onRefresh: _fetchPosts,
-          child: _buildPlazaBody(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _fetchPosts,
+                child: _buildPlazaBody(),
+              ),
+            ),
+          ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final token = await getToken();
-          if (token != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PlazaPostPage(
-                  token: token,
-                  categories: ['sublease', 'restaurant', 'event'],
-                  onPostCreated: _fetchPosts,
+      floatingActionButton: SafeArea(
+        child: FloatingActionButton(
+          onPressed: () async {
+            final token = await getToken();
+            if (token != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PlazaPostPage(
+                    token: token,
+                    categories: ['sublease', 'restaurant', 'event'],
+                    onPostCreated: _fetchPosts,
+                  ),
                 ),
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Token is missing, please log in again')),
-            );
-          }
-        },
-        child: const Icon(Icons.add),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Token is missing, please log in again')),
+              );
+            }
+          },
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
