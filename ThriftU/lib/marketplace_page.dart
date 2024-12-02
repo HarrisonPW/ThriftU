@@ -41,7 +41,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
     _fetchPosts();
     _fetchWeather();
     //_startTimer();
-    Timer(const Duration(seconds: 5), () {
+    Timer(const Duration(seconds: 15), () {
       if (mounted) {
         setState(() {
           showWeather = false;
