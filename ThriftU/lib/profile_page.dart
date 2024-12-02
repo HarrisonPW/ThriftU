@@ -218,7 +218,7 @@ class _ProfilePageState extends State<ProfilePage> {
       // Fetch user posts
       final posts = await apiService.getUserPosts(token);
       setState(() {
-        userPosts = posts.where((post) => post['post_type'] == 'Furniture' || post['post_type'] == 'Clothes' || post['post_type'] == 'Kitchenware').toList();;
+        userPosts = posts.where((post) => post['post_type'] == 'Furniture' || post['post_type'] == 'Clothes' || post['post_type'] == 'Kitchenware' || post['post_type'] == 'Electronics' || post['post_type'] == 'Miscellaneous' || post['post_type'] == 'Sports').toList();;
       });
 
       // Fetch associated image URLs for each post
@@ -296,6 +296,32 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating profile photo: $error')),
+      );
+    }
+  }
+
+  Future<void> _deletePost(int postId, int index) async {
+    final token = await getToken();
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is missing, please log in again')),
+      );
+      return;
+    }
+
+    try {
+      await apiService.deletePost(token, postId);
+      setState(() {
+        userPosts.removeAt(index); // Remove the deleted post from the list
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post deleted successfully')),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete post: $error')),
       );
     }
   }
@@ -418,15 +444,29 @@ class _ProfilePageState extends State<ProfilePage> {
             // Listings or Likes based on toggle
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () => _showListings ? _fetchUserPosts() : _fetchLikedPosts(),
+                onRefresh: () async {
+                  if (_showListings) {
+                    await _fetchUserPosts();
+                  } else {
+                    await _fetchLikedPosts();
+                  }
+                },
                 child: _showListings && userPosts.isEmpty || !_showListings && likedPosts.isEmpty
-                    ? Center(
-                      child: Text(
-                        "Nothing here, go find something you like!",
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ? ListView(
+                    children: const [
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Text(
+                            "Nothing here, go find something you like!",
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                        ),
                       ),
-                    )
+                    ],
+                )
                     : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: _showListings ? userPosts.length : likedPosts.length,
                     itemBuilder: (context, index) {
                       final data = _showListings ? userPosts[index] : likedPosts[index];
@@ -454,14 +494,23 @@ class _ProfilePageState extends State<ProfilePage> {
                             data["title"] ?? 'Untitled',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          trailing: Text(
-                            '\$${data["price"]?.toStringAsFixed(2) ?? '0.00'}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '\$${data["price"]?.toStringAsFixed(2) ?? '0.00'}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _deletePost(postID, index),
+                              ),
+                            ],
                           ),
                           onTap: () => _navigateToDetails(postID),
                         ),
                       );
-                  },
+                    },
                 ),
               ),
             ),

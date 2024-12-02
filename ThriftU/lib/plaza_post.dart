@@ -73,7 +73,11 @@ class _PostPageState extends State<PlazaPostPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+        onTap: () {
+      FocusScope.of(context).unfocus();
+    },
+    child: Scaffold(
       appBar: AppBar(
         title: const Text('Create Post'),
       ),
@@ -125,6 +129,7 @@ class _PostPageState extends State<PlazaPostPage> {
           ],
         ),
       ),
+    ),
     );
   }
 
