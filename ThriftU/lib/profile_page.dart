@@ -76,6 +76,16 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _fetchAllData() async {
+    await Future.wait([
+      _fetchUserProfile(),
+      _fetchUserPosts(),
+      _fetchLikedPosts(),
+      _fetchFollowingCount(),
+      _fetchFollowerCount(),
+    ]);
+  }
+
   Future<void> _fetchLikedPosts() async {
     final token = await getToken();
     if (token == null) {
@@ -444,13 +454,7 @@ class _ProfilePageState extends State<ProfilePage> {
             // Listings or Likes based on toggle
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () async {
-                  if (_showListings) {
-                    await _fetchUserPosts();
-                  } else {
-                    await _fetchLikedPosts();
-                  }
-                },
+                onRefresh: _fetchAllData,
                 child: _showListings && userPosts.isEmpty || !_showListings && likedPosts.isEmpty
                     ? ListView(
                     children: const [

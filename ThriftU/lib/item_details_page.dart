@@ -153,136 +153,165 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
       appBar: AppBar(
         title: const Text('Item Details'),
       ),
+      resizeToAvoidBottomInset: true, // Allows the UI to adjust for the keyboard
       body: _postDetails == null
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Display item details
-            Text(
-              _postDetails!['title'],
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text('Price: \$${_postDetails!['price'].toStringAsFixed(2)}'),
-            const SizedBox(height: 10),
-
-            // Display post images
-            if (_postDetails!['files'] != null && _postDetails!['files'].isNotEmpty)
-              SizedBox(
-                height: 180,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _postDetails!['files'].length,
-                  itemBuilder: (context, index) {
-                    final imageUrl = _postDetails!['files'][index];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Image.network(imageUrl, fit: BoxFit.cover),
-                    );
-                  },
-                ),
-              )
-            else
-            // Fallback to placeholder image if no files are present
-              Image.network('https://via.placeholder.com/140', height: 180, fit: BoxFit.cover),
-
-            const SizedBox(height: 20),
-
-            // Description section
-            Text(
-              'Description: ${_postDetails!['description']}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-
-            // User profile section
-            _userProfile == null
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Posted by:',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Row(
+          : SafeArea( // Wrap in SafeArea to handle device safe regions
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Expanded( // Use Expanded to handle the ListView properly
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundImage: _profileImageUrl != null
-                            ? NetworkImage(_profileImageUrl!)
-                            : const AssetImage('assets/images/profile.jpeg') as ImageProvider,
+                      // Display item details
+                      Text(
+                        _postDetails!['title'],
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _userProfile!['username'],
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      const SizedBox(height: 10),
+                      Text('Price: \$${_postDetails!['price'].toStringAsFixed(2)}'),
+                      const SizedBox(height: 10),
+
+                      // Display post images
+                      if (_postDetails!['files'] != null &&
+                          _postDetails!['files'].isNotEmpty)
+                        SizedBox(
+                          height: 180,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _postDetails!['files'].length,
+                            itemBuilder: (context, index) {
+                              final imageUrl = _postDetails!['files'][index];
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: Image.network(imageUrl, fit: BoxFit.cover),
+                              );
+                            },
                           ),
-                          Text(_userProfile!['email']),
+                        )
+                      else
+                        Image.network('https://via.placeholder.com/140',
+                            height: 180, fit: BoxFit.cover),
+
+                      const SizedBox(height: 20),
+
+                      // Description section
+                      Text(
+                        'Description: ${_postDetails!['description']}',
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // User profile section
+                      if (_userProfile != null)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Posted by:',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 30,
+                                  backgroundImage: _profileImageUrl != null
+                                      ? NetworkImage(_profileImageUrl!)
+                                      : const AssetImage(
+                                      'assets/images/profile.jpeg')
+                                  as ImageProvider,
+                                ),
+                                const SizedBox(width: 10),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _userProfile!['username'],
+                                      style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(_userProfile!['email']),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              onPressed: () =>
+                                  _toggleFollow(_userProfile!['user_id']),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _isFollowing
+                                    ? Colors.grey
+                                    : Colors.blue,
+                              ),
+                              child: Text(
+                                _isFollowing ? 'Unfollow' : 'Follow',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      const SizedBox(height: 20),
+
+                      // Like and comment section
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              _isLiked
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: Colors.red,
+                            ),
+                            onPressed: _toggleLike,
+                          ),
+                          Text('$_likeCount likes'),
                         ],
                       ),
+                      const Divider(),
+
+                      // Comments section header
+                      const Text(
+                        'Comments',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const Divider(),
+
+                      // Comments list
+                      if (_replies.isNotEmpty)
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _replies.length,
+                          itemBuilder: (context, index) {
+                            final reply = _replies[index];
+                            return ListTile(
+                              title: Text(reply['reply_text']),
+                              subtitle: Text(
+                                  'by ${reply['email']} on ${reply['create_time']}'),
+                            );
+                          },
+                        )
+                      else
+                        const Text(
+                          'No comments yet.',
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () => _toggleFollow(_userProfile!['user_id']),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isFollowing ? Colors.grey : Colors.blue,
-                    ),
-                    child: Text(
-                      _isFollowing ? 'Unfollow' : 'Follow',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-            ),
-            const SizedBox(height: 20),
-
-            // Like and comment section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: Colors.red,
-                  ),
-                  onPressed: _toggleLike,
                 ),
-                Text('$_likeCount likes'),
-              ],
-            ),
-            const Divider(),
-
-            // Comments section
-            const Text(
-              'Comments',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _replies.length,
-                itemBuilder: (context, index) {
-                  final reply = _replies[index];
-                  return ListTile(
-                    title: Text(reply['reply_text']),
-                    subtitle: Text('by ${reply['email']} on ${reply['create_time']}'),
-                  );
-                },
               ),
-            ),
-            const Divider(),
 
-            // Reply input field
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Row(
+              // Reply input field
+              Row(
                 children: [
                   Expanded(
                     child: TextField(
@@ -307,8 +336,8 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
